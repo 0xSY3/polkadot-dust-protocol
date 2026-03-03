@@ -19,7 +19,7 @@ export function useV2Deposit(keysRef: RefObject<V2Keys | null>, chainIdOverride?
   const { address, isConnected } = useAccount()
   const wagmiChainId = useChainId()
   const chainId = chainIdOverride ?? wagmiChainId
-  const publicClient = usePublicClient()
+  const publicClient = usePublicClient({ chainId })
   const { data: walletClient } = useWalletClient()
 
   const [isPending, setIsPending] = useState(false)

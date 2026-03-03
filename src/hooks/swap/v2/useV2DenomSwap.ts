@@ -48,7 +48,7 @@ export function useV2DenomSwap(keysRef: RefObject<V2Keys | null>, chainIdOverrid
   const { address, isConnected } = useAccount()
   const wagmiChainId = useChainId()
   const chainId = chainIdOverride ?? wagmiChainId
-  const publicClient = usePublicClient()
+  const publicClient = usePublicClient({ chainId })
 
   const [isPending, setIsPending] = useState(false)
   const [status, setStatus] = useState<DenomSwapStatus>('idle')

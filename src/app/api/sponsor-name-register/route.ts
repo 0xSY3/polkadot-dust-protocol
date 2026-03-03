@@ -144,16 +144,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid meta-address' }, { status: 400 });
     }
 
-    // Register on the primary (requested) chain first
-    const primaryTxHash = await registerOnChain(primaryChainId, stripped, metaBytes, registrant);
+    // Route to canonical chain if primary has no nameRegistry (L2s)
+    const primaryConfig = getChainConfig(primaryChainId);
+    const effectivePrimaryChainId = primaryConfig.contracts.nameRegistry
+      ? primaryChainId
+      : getCanonicalNamingChain().id;
+
+    // Register on the effective primary chain
+    const primaryTxHash = await registerOnChain(effectivePrimaryChainId, stripped, metaBytes, registrant);
     if (!primaryTxHash) {
-      // Check if name is taken on primary chain
-      const config = getChainConfig(primaryChainId);
-      const sponsor = getServerSponsor(primaryChainId);
+      const config = getChainConfig(effectivePrimaryChainId);
+      if (!config.contracts.nameRegistry) {
+        return NextResponse.json({ error: 'Name registration failed' }, { status: 500 });
+      }
+      const sponsor = getServerSponsor(effectivePrimaryChainId);
       const registry = new ethers.Contract(config.contracts.nameRegistry, NAME_REGISTRY_ABI, sponsor);
       const available = await registry.isNameAvailable(stripped);
       if (!available) {
-        // Idempotency check: if already registered to the same metaAddress, treat as success
         try {
           const storedMeta: string = await registry.resolveName(stripped);
           const normalizeHex = (h: string) => h.toLowerCase().replace(/^0x/, '');
@@ -189,7 +196,7 @@ export async function POST(req: Request) {
 
     // Mirror to all other supported chains (fire and forget — don't block the response)
     const otherChains = getSupportedChains().filter(
-      c => c.id !== primaryChainId && c.contracts.nameRegistry
+      c => c.id !== effectivePrimaryChainId && c.contracts.nameRegistry
     );
     if (otherChains.length > 0) {
       Promise.allSettled(

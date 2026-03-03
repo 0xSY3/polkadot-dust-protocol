@@ -42,7 +42,7 @@ export function useV2Swap(keysRef: RefObject<V2Keys | null>, chainIdOverride?: n
   const { address, isConnected } = useAccount()
   const wagmiChainId = useChainId()
   const chainId = chainIdOverride ?? wagmiChainId
-  const publicClient = usePublicClient()
+  const publicClient = usePublicClient({ chainId })
 
   const [isPending, setIsPending] = useState(false)
   const [status, setStatus] = useState<SwapStatus>('idle')

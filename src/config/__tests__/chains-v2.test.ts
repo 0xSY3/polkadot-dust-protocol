@@ -64,14 +64,17 @@ describe('Chain config: core functions work', () => {
     expect(() => getChainConfig(999999)).toThrow('Unsupported chain')
   })
 
-  it('getSupportedChains returns both chains', () => {
+  it('getSupportedChains returns all chains', () => {
     const chains = getSupportedChains()
-    expect(chains).toHaveLength(2)
+    expect(chains).toHaveLength(5)
   })
 
   it('isChainSupported works correctly', () => {
     expect(isChainSupported(11155111)).toBe(true)
     expect(isChainSupported(111551119090)).toBe(true)
+    expect(isChainSupported(421614)).toBe(true)
+    expect(isChainSupported(11155420)).toBe(true)
+    expect(isChainSupported(84532)).toBe(true)
     expect(isChainSupported(1)).toBe(false)
   })
 })

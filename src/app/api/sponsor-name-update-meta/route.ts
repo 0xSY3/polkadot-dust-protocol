@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { NextResponse } from 'next/server';
-import { getChainConfig } from '@/config/chains';
+import { getChainConfig, getCanonicalNamingChain } from '@/config/chains';
 import { getServerSponsor, parseChainId } from '@/lib/server-provider';
 
 export const maxDuration = 60;
@@ -25,7 +25,10 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const chainId = parseChainId(body);
+    const requestedChainId = parseChainId(body);
+    const requestedConfig = getChainConfig(requestedChainId);
+    // Route to canonical chain when chain has no nameRegistry (L2s)
+    const chainId = requestedConfig.contracts.nameRegistry ? requestedChainId : getCanonicalNamingChain().id;
     const config = getChainConfig(chainId);
 
     const { name, newMetaAddress } = body;

@@ -96,7 +96,7 @@ const THANOS_SEPOLIA_CONFIG: ChainConfig = {
     dustPoolVerifier: '0x9914F482c262dC8BCcDa734c6fF3f5384B1E19Aa',
     subAccount7702: null,
     nameRegistryMerkle: null,
-    nameVerifier: '0x0000000000000000000000000000000000000000', // placeholder — deploy pending
+    nameVerifier: '0x318f9DfDF6a51C1e2B246E505A785966d2b9C76B',
     uniswapV4PoolManager: null,
     uniswapV4StateView: null,
     uniswapV4Quoter: null,
@@ -164,7 +164,7 @@ const ETHEREUM_SEPOLIA_CONFIG: ChainConfig = {
     dustPool: '0xc95a359E66822d032A6ADA81ec410935F3a88bcD',
     dustPoolVerifier: '0x17f52f01ffcB6d3C376b2b789314808981cebb16',
     subAccount7702: '0xdf34D138d1E0beC7127c32E9Aa1273E8B4DE7dFF', // OZ ReentrancyGuard fixed version
-    nameRegistryMerkle: '0x0000000000000000000000000000000000000000', // placeholder — deploy pending
+    nameRegistryMerkle: '0x4426FD19A7E824b47bde26eFc59E93e0DCc34657',
     nameVerifier: null,
     uniswapV4PoolManager: '0x93805603e0167574dFe2F50ABdA8f42C85002FD8',
     uniswapV4StateView: '0x9C1CF9F4C496b7Df66d4EaBbff127Db6Af3c1C14',
@@ -226,7 +226,7 @@ const ARBITRUM_SEPOLIA_CONFIG: ChainConfig = {
     dustPoolVerifier: null,
     subAccount7702: null,
     nameRegistryMerkle: null,
-    nameVerifier: null,
+    nameVerifier: '0x068C9591409CCa14c891DB2bfc061923CF1EfbaB',
     uniswapV4PoolManager: '0xFB3e0C6F74eB1a21CC1Da29aeC80D2Dfe6C9a317',
     uniswapV4StateView: '0x9d467fa9062b6e9b1a46e26007ad82db116c67cb',
     uniswapV4Quoter: '0x7de51022d70a725b508085468052e25e22b5c4c9',
@@ -235,7 +235,13 @@ const ARBITRUM_SEPOLIA_CONFIG: ChainConfig = {
     dustPoolV2SplitVerifier: '0x7E726D2F8eE60B4Dede7A92461c2Fd15Bf38bb3A',
     dustPoolV2ComplianceVerifier: '0xe6236145fddbC50439934Afb404a607Afaa14f51',
     dustSwapAdapterV2: '0xe1Ca871aE6905eAe7B442d0AF7c5612CAE0a9B94',
-    dustSwapVanillaPoolKey: null,
+    dustSwapVanillaPoolKey: {
+      currency0: '0x0000000000000000000000000000000000000000',
+      currency1: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',
+      fee: 500,
+      tickSpacing: 10,
+      hooks: '0x0000000000000000000000000000000000000000',
+    },
   },
   creationCodes: {
     wallet: THANOS_SEPOLIA_CONFIG.creationCodes.wallet,
@@ -280,7 +286,7 @@ const OP_SEPOLIA_CONFIG: ChainConfig = {
     dustPoolVerifier: null,
     subAccount7702: null,
     nameRegistryMerkle: null,
-    nameVerifier: null,
+    nameVerifier: '0x9E63A1d2505BC630C1bf0DEE1660050dF21D8c84',
     uniswapV4PoolManager: null,
     uniswapV4StateView: null,
     uniswapV4Quoter: null,
@@ -334,7 +340,7 @@ const BASE_SEPOLIA_CONFIG: ChainConfig = {
     dustPoolVerifier: null,
     subAccount7702: null,
     nameRegistryMerkle: null,
-    nameVerifier: null,
+    nameVerifier: '0x416D52f0566081b6881eA887baD3FB1a54fa94aF',
     uniswapV4PoolManager: '0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408',
     uniswapV4StateView: '0x571291b572ed32ce6751a2cb2486ebee8defb9b4',
     uniswapV4Quoter: '0x4a6513c898fe1b2d0e78d3b0e0a4a151589b1cba',
@@ -342,8 +348,14 @@ const BASE_SEPOLIA_CONFIG: ChainConfig = {
     dustPoolV2Verifier: '0xe51ebD6B1F1ad7d7E4874Bb7D4E53a0504cCf652',
     dustPoolV2SplitVerifier: '0x503e68AdccFbAc5A2F991FC285735a119bF364F7',
     dustPoolV2ComplianceVerifier: '0x33b72e6d7b39a32B88715b658f2248897Af2e650',
-    dustSwapAdapterV2: '0x18d54D6ca7b56738c9E3F9a4258641608Abe7CED',
-    dustSwapVanillaPoolKey: null,
+    dustSwapAdapterV2: '0x844d11bD48D85411eE8cD1a7cB0aC00672B1d516',
+    dustSwapVanillaPoolKey: {
+      currency0: '0x0000000000000000000000000000000000000000',
+      currency1: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+      fee: 500,
+      tickSpacing: 10,
+      hooks: '0x0000000000000000000000000000000000000000',
+    },
   },
   creationCodes: {
     wallet: THANOS_SEPOLIA_CONFIG.creationCodes.wallet,
@@ -397,9 +409,18 @@ export function getCanonicalNamingChain(): ChainConfig {
   return chain;
 }
 
+// L2 chain IDs — gas is ~1000x cheaper than L1
+const L2_CHAIN_IDS = new Set([421614, 11155420, 84532]);
+
 // Minimum balance needed to cover gas for a claim transaction (EOA only).
-// Based on 21000 gas * 1 gwei * 2x buffer = 0.000042; using 0.0001 to be safe.
+// L1: 21000 gas * 1 gwei * 2x buffer ≈ 0.000042; using 0.0001.
+// L2: gas ~1000x cheaper; 0.0000001 is sufficient.
 // Sponsored wallet types (create2, account, eip7702) can claim any amount > 0.
+export function getMinClaimableBalance(chainId: number): number {
+  return L2_CHAIN_IDS.has(chainId) ? 0.0000001 : 0.0001;
+}
+
+/** @deprecated Use getMinClaimableBalance(chainId) instead */
 export const MIN_CLAIMABLE_BALANCE = 0.0001;
 
 // Re-export viem chain definitions for providers.tsx

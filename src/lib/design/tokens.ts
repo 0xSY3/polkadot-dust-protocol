@@ -307,9 +307,9 @@ export const cardAccents = [
 
 // ─── Chain-aware utilities (from config) ─────────────────────────────────────
 
-import { getChainConfig, DEFAULT_CHAIN_ID, MIN_CLAIMABLE_BALANCE } from '@/config/chains';
+import { getChainConfig, DEFAULT_CHAIN_ID, getMinClaimableBalance } from '@/config/chains';
 
-export { MIN_CLAIMABLE_BALANCE };
+export { getMinClaimableBalance };
 
 /** Chain-aware explorer URL */
 export function getExplorerBase(chainId?: number): string {

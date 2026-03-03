@@ -10,7 +10,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useWalletConnect } from "@/hooks/wallet-connect/useWalletConnect";
 import { isStealthName, NAME_SUFFIX, GeneratedStealthAddress, ScanResult } from "@/lib/stealth";
-import { getChainConfig, MIN_CLAIMABLE_BALANCE } from "@/config/chains";
+import { getChainConfig, getMinClaimableBalance } from "@/config/chains";
 import { isPrivyEnabled } from "@/config/privy";
 import { useLogin } from "@privy-io/react-auth";
 import { useConnect } from "wagmi";
@@ -69,7 +69,7 @@ type ViewType = "home" | "send" | "inbox" | "history" | "settings";
 
 export const PrivateWallet = () => {
   const { isConnected, address } = useWalletConnect();
-  const { ownedNames: authOwnedNames } = useAuth();
+  const { ownedNames: authOwnedNames, activeChainId } = useAuth();
   const {
     stealthKeys, metaAddress, deriveKeysFromWallet, clearKeys,
     registerMetaAddress, isRegistered, isLoading: isKeyLoading,
@@ -109,7 +109,7 @@ export const PrivateWallet = () => {
     // Sponsored wallet types (create2, account, eip7702) can claim any amount
     // Only apply minimum balance check for EOA wallets where user pays gas
     if (p.walletType && p.walletType !== 'eoa') return bal > 0;
-    return bal >= MIN_CLAIMABLE_BALANCE;
+    return bal >= getMinClaimableBalance(activeChainId);
   });
 
   useEffect(() => {
@@ -964,7 +964,7 @@ const InboxView = ({ colors, radius, payments, isScanning, scan, claimAddressesI
             {pendingList.map((payment: StealthPayment) => {
               const index = payments.indexOf(payment);
               const balance = parseFloat(payment.balance || "0");
-              const isTooLowForGas = balance > 0 && balance < MIN_CLAIMABLE_BALANCE && (!payment.walletType || payment.walletType === 'eoa');
+              const isTooLowForGas = balance > 0 && balance < getMinClaimableBalance(activeChainId) && (!payment.walletType || payment.walletType === 'eoa');
               const canClaim = !payment.claimed && !payment.keyMismatch && !isTooLowForGas;
 
               return (

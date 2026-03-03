@@ -9,7 +9,7 @@ export { generateStealthAddress, computeStealthPrivateKey, verifyStealthAddress,
 
 export { scanAnnouncements, scanAnnouncementsViewOnly, getLastScannedBlock, setLastScannedBlock, getAnnouncementCount } from './scanner';
 
-export { registerStealthMetaAddress, registerStealthMetaAddressOnBehalf, lookupStealthMetaAddress, getRegistryNonce, signRegistration, isRegistered, formatBytesToUri } from './registry';
+export { registerStealthMetaAddress, registerStealthMetaAddressOnBehalf, lookupStealthMetaAddress, getRegistryNonce, signRegistration, isRegistered, formatBytesToUri, getRegistryForChain } from './registry';
 
 export type { DerivedClaimAddress } from './hdWallet';
 export { deriveClaimAddresses, deriveClaimAddressesWithPin, deriveClaimAddressAtIndex, deriveSeedFromSignature, deriveSeedFromSignatureAndPin, getNextClaimAddress, verifyClaimAddressDerivation, saveClaimAddressesToStorage, loadClaimAddressesFromStorage, saveSignatureHash, verifySignatureHash, updateClaimAddressLabel, CLAIM_ADDRESS_DERIVATION_MESSAGE } from './hdWallet';

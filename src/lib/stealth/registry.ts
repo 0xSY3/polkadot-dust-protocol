@@ -1,7 +1,7 @@
 // ERC-6538 Registry
 
 import { ethers } from 'ethers';
-import { SCHEME_ID, CANONICAL_ADDRESSES } from './types';
+import { SCHEME_ID, CANONICAL_ADDRESSES, getChainConfig, DEFAULT_CHAIN_ID } from './types';
 
 const REGISTRY_ABI = [
   'function registerKeys(uint256 schemeId, bytes calldata stealthMetaAddress) external',
@@ -19,6 +19,11 @@ const REGISTER_TYPES = {
     { name: 'nonce', type: 'uint256' },
   ],
 };
+
+/** Resolve the ERC-6538 registry address for a given chain (falls back to canonical) */
+export function getRegistryForChain(chainId?: number): string {
+  return getChainConfig(chainId ?? DEFAULT_CHAIN_ID).contracts.registry;
+}
 
 function toBytes(metaAddress: string): string {
   if (metaAddress.startsWith('st:')) {

@@ -88,12 +88,18 @@ export async function POST(req: Request) {
     const isPoolDeposit = selector === EXECUTE_SELECTOR;
     const callGasLimit = body.callGasLimit || (isPoolDeposit ? '8000000' : '200000');
     const verificationGasLimit = body.verificationGasLimit || (initCode && initCode !== '0x' ? '500000' : '200000');
-    const preVerificationGas = body.preVerificationGas || '50000';
+    // L2s require higher preVerificationGas to cover L1 data posting costs
+    const L2_PRE_VERIFICATION: Record<number, string> = {
+      421614: '500000',   // Arbitrum Sepolia (L1 calldata overhead)
+      11155420: '300000', // OP Sepolia (L1 data fee via EIP-4844)
+      84532: '300000',    // Base Sepolia (same OP Stack model)
+    };
+    const preVerificationGas = body.preVerificationGas || L2_PRE_VERIFICATION[chainId] || '50000';
 
-    // Fee estimation
-    const block = await provider.getBlock('latest');
-    const baseFee = block.baseFeePerGas || ethers.utils.parseUnits('1', 'gwei');
-    const maxPriorityFeePerGas = ethers.utils.parseUnits('1.5', 'gwei');
+    // Fee estimation — use RPC feeData; L2s (Arbitrum FIFO sequencer) don't use priority fees
+    const feeData = await provider.getFeeData();
+    const baseFee = feeData.lastBaseFeePerGas || feeData.gasPrice || ethers.utils.parseUnits('1', 'gwei');
+    const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas || ethers.utils.parseUnits('0.01', 'gwei');
     const maxFeePerGas = baseFee.mul(2).add(maxPriorityFeePerGas);
 
     // Build partial UserOp (without paymasterAndData and signature)

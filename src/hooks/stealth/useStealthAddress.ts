@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 import {
   generateStealthKeyPair, deriveStealthKeyPairFromSignature, deriveStealthKeyPairFromSignatureAndPin,
   formatStealthMetaAddress, parseStealthMetaAddress, lookupStealthMetaAddress,
-  isRegistered as checkIsRegistered,
+  isRegistered as checkIsRegistered, getRegistryForChain,
   STEALTH_KEY_DERIVATION_MESSAGE, SCHEME_ID,
   type StealthKeyPair, type StealthMetaAddress,
   deriveClaimAddresses, deriveClaimAddressesWithPin, saveClaimAddressesToStorage, loadClaimAddressesFromStorage,
@@ -283,7 +283,7 @@ export function useStealthAddress() {
     setIsLoading(true);
     try {
       const provider = getChainProvider(chainId);
-      const registered = await checkIsRegistered(provider, address);
+      const registered = await checkIsRegistered(provider, address, SCHEME_ID.SECP256K1, getRegistryForChain(chainId));
       setIsRegistered(registered);
       return registered;
     } catch {
@@ -297,7 +297,7 @@ export function useStealthAddress() {
     setIsLoading(true);
     try {
       const provider = getChainProvider(chainId);
-      return await lookupStealthMetaAddress(provider, addr);
+      return await lookupStealthMetaAddress(provider, addr, SCHEME_ID.SECP256K1, getRegistryForChain(chainId));
     } catch {
       return null;
     } finally {

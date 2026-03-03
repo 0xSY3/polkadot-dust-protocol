@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import { ec as EC } from 'elliptic';
 import { NextResponse } from 'next/server';
-import { getChainConfig, DEFAULT_CHAIN_ID } from '@/config/chains';
+import { getChainConfig, getCanonicalNamingChain, DEFAULT_CHAIN_ID } from '@/config/chains';
 import { getServerProvider, getServerSponsor } from '@/lib/server-provider';
 
 export const maxDuration = 60;
@@ -111,7 +111,10 @@ export async function GET(req: Request, { params }: { params: { name: string } }
     const { name } = params;
     const url = new URL(req.url);
     const { searchParams } = url;
-    const chainId = parseInt(searchParams.get('chainId') || '') || DEFAULT_CHAIN_ID;
+    const requestedChainId = parseInt(searchParams.get('chainId') || '') || DEFAULT_CHAIN_ID;
+    const requestedConfig = getChainConfig(requestedChainId);
+    // Route to canonical chain for name resolution when chain has no nameRegistry (L2s)
+    const chainId = requestedConfig.contracts.nameRegistry ? requestedChainId : getCanonicalNamingChain().id;
     const config = getChainConfig(chainId);
     const linkSlug = searchParams.get('link') || undefined;
 

@@ -73,7 +73,7 @@ function toBytes(metaAddress: string): string {
   return metaAddress.startsWith('0x') ? metaAddress : '0x' + metaAddress;
 }
 
-import { getChainConfig, DEFAULT_CHAIN_ID, getSupportedChains } from '@/config/chains';
+import { getChainConfig, DEFAULT_CHAIN_ID, getSupportedChains, getCanonicalNamingChain } from '@/config/chains';
 
 import { getChainProvider } from '@/lib/providers';
 
@@ -84,6 +84,14 @@ function getReadOnlyProvider(chainId?: number): ethers.providers.BaseProvider {
 function getNameRegistryForChain(chainId?: number): string {
   const config = getChainConfig(chainId ?? DEFAULT_CHAIN_ID);
   return config.contracts.nameRegistry;
+}
+
+// Routes naming operations to canonical chain when active chain has no nameRegistry (L2s)
+function getEffectiveNamingChainId(chainId?: number): number {
+  const id = chainId ?? DEFAULT_CHAIN_ID;
+  const config = getChainConfig(id);
+  if (config.contracts.nameRegistry) return id;
+  return getCanonicalNamingChain().id;
 }
 
 function getRegistry(signerOrProvider: ethers.Signer | ethers.providers.Provider) {
@@ -236,9 +244,10 @@ export async function resolveStealthName(_provider: ethers.providers.Provider | 
 
 async function resolveOnChain(chainId: number | undefined, stripped: string): Promise<string | null> {
   try {
-    const addr = chainId ? getNameRegistryForChain(chainId) : getNameRegistryAddress();
+    const effectiveChainId = getEffectiveNamingChainId(chainId);
+    const addr = getNameRegistryForChain(effectiveChainId);
     if (!addr) return null;
-    const rpcProvider = getReadOnlyProvider(chainId);
+    const rpcProvider = getReadOnlyProvider(effectiveChainId);
     const registry = new ethers.Contract(addr, NAME_REGISTRY_ABI, rpcProvider);
     const result = await registry.resolveName(stripped);
     return result && result !== '0x' && result.length > 4 ? result : null;
@@ -249,7 +258,7 @@ async function resolveOnChain(chainId: number | undefined, stripped: string): Pr
 
 export async function isNameAvailable(_provider: ethers.providers.Provider | null, name: string, chainId?: number): Promise<boolean | null> {
   try {
-    const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
+    const effectiveChainId = getEffectiveNamingChainId(chainId);
 
     // Try Graph first if enabled
     if (process.env.NEXT_PUBLIC_USE_GRAPH !== 'false') {
@@ -257,11 +266,9 @@ export async function isNameAvailable(_provider: ethers.providers.Provider | nul
       if (isGraphAvailable(effectiveChainId)) {
         const graphResult = await checkNameAvailabilityGraph(stripNameSuffix(name), effectiveChainId);
         if (graphResult !== null) return graphResult;
-        // Fall through to RPC if Graph fails
       }
     }
 
-    // RPC fallback
     const addr = getNameRegistryForChain(effectiveChainId);
     if (!addr) return null;
     const rpcProvider = getReadOnlyProvider(effectiveChainId);
@@ -275,7 +282,7 @@ export async function isNameAvailable(_provider: ethers.providers.Provider | nul
 
 export async function getNameOwner(_provider: ethers.providers.Provider | null, name: string, chainId?: number): Promise<string | null> {
   try {
-    const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
+    const effectiveChainId = getEffectiveNamingChainId(chainId);
     const addr = getNameRegistryForChain(effectiveChainId);
     if (!addr) return null;
     const rpcProvider = getReadOnlyProvider(effectiveChainId);
@@ -301,7 +308,7 @@ export async function getNamesOwnedBy(_provider: ethers.providers.Provider | nul
 
 async function getNamesOnChain(chainId: number | undefined, address: string): Promise<string[]> {
   try {
-    const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
+    const effectiveChainId = getEffectiveNamingChainId(chainId);
     const addr = getNameRegistryForChain(effectiveChainId);
     if (!addr) return [];
     const rpcProvider = getReadOnlyProvider(effectiveChainId);
@@ -343,6 +350,10 @@ export async function discoverNameByMetaAddress(
   if (!targetHex || targetHex === '0x') return null;
 
   const chains = getSupportedChains().filter(c => c.contracts.nameRegistry);
+  const canonical = getCanonicalNamingChain();
+  if (!chains.find(c => c.id === canonical.id)) {
+    chains.unshift(canonical);
+  }
 
   // Query all chains in parallel — return first match
   const results = await Promise.allSettled(
@@ -444,8 +455,13 @@ export async function discoverNameByWalletHistory(
     if (historicalMetas.size === 0) return null;
 
     // Step 2: Check deployer names on ALL chains' nameRegistries in parallel
+    const namingChains = chains.filter(c => c.contracts.nameRegistry);
+    const canonical = getCanonicalNamingChain();
+    if (!namingChains.find(c => c.id === canonical.id)) {
+      namingChains.unshift(canonical);
+    }
     const nameResults = await Promise.allSettled(
-      chains.filter(c => c.contracts.nameRegistry).map(async (chain) => {
+      namingChains.map(async (chain) => {
         const addr = getNameRegistryForChain(chain.id);
         if (!addr) return null;
         try {

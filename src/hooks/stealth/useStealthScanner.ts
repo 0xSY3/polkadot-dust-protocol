@@ -15,7 +15,7 @@ import {
   loadDeposits,
   type StoredDeposit,
 } from '@/lib/dustpool';
-import { getChainConfig, DEFAULT_CHAIN_ID, MIN_CLAIMABLE_BALANCE } from '@/config/chains';
+import { getChainConfig, DEFAULT_CHAIN_ID, getMinClaimableBalance } from '@/config/chains';
 import { getTokensForChain } from '@/config/tokens';
 import { getChainProvider, getChainBatchProvider, rotateBatchProvider } from '@/lib/providers';
 
@@ -699,7 +699,7 @@ export function useStealthScanner(stealthKeys: StealthKeyPair | null, options?: 
       const bal = parseFloat(p.balance || '0');
       if (p.claimed || p.keyMismatch || bal <= 0) return false;
       // EOA wallets need enough balance to cover gas; sponsored types just need > 0
-      if ((!p.walletType || p.walletType === 'eoa') && bal < MIN_CLAIMABLE_BALANCE) return false;
+      if ((!p.walletType || p.walletType === 'eoa') && bal < getMinClaimableBalance(chainId)) return false;
       if (autoClaimingRef.current.has(txHash)) return false;
       // Pool-eligible payments are NOT auto-claimed — user deposits manually via dashboard button
       if (poolMode && (p.walletType === 'create2' || p.walletType === 'account' || p.walletType === 'eip7702')) return false;

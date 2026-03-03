@@ -4,7 +4,7 @@ import { useState, useEffect, ChangeEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useStealthSend, useStealthName } from "@/hooks/stealth";
 import { useAuth } from "@/contexts/AuthContext";
-import { isStealthName, NAME_SUFFIX, lookupStealthMetaAddress } from "@/lib/stealth";
+import { isStealthName, NAME_SUFFIX, lookupStealthMetaAddress, getRegistryForChain, SCHEME_ID } from "@/lib/stealth";
 import { getChainConfig } from "@/config/chains";
 import { getChainProvider } from "@/lib/providers";
 import { ethers } from "ethers";
@@ -46,7 +46,7 @@ export function SendModal({ isOpen, onClose }: SendModalProps) {
         setIsResolving(true);
         try {
           const provider = getChainProvider(activeChainId);
-          const metaBytes = await lookupStealthMetaAddress(provider, recipient);
+          const metaBytes = await lookupStealthMetaAddress(provider, recipient, SCHEME_ID.SECP256K1, getRegistryForChain(activeChainId));
           setIsResolving(false);
           if (metaBytes) {
             setResolvedAddress(`st:eth:0x${metaBytes.replace(/^0x/, "")}`);

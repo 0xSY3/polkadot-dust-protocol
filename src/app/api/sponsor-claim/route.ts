@@ -20,7 +20,11 @@ let globalClaimTimestamps: number[] = [];
 
 // Sponsor balance monitoring — per-chain to avoid one low-balance chain pausing all
 const sponsorBalanceState = new Map<number, { paused: boolean; lastCheck: number }>();
-const MIN_SPONSOR_BALANCE = ethers.utils.parseEther('0.1');
+// L2 claims cost ~0.0001 ETH vs ~0.01 on L1 — 0.01 ETH is sufficient on L2
+const L2_CHAIN_IDS = new Set([421614, 11155420, 84532]);
+function getMinSponsorBalance(chainId: number): ethers.BigNumber {
+  return L2_CHAIN_IDS.has(chainId) ? ethers.utils.parseEther('0.01') : ethers.utils.parseEther('0.1');
+}
 const BALANCE_CHECK_INTERVAL_MS = 30_000;
 
 function checkGlobalRateLimit(): boolean {
@@ -38,7 +42,7 @@ async function checkSponsorBalance(provider: ethers.providers.Provider, sponsorA
   state.lastCheck = now;
   try {
     const balance = await provider.getBalance(sponsorAddress);
-    state.paused = balance.lt(MIN_SPONSOR_BALANCE);
+    state.paused = balance.lt(getMinSponsorBalance(chainId));
     if (state.paused) console.error(`[Sponsor] Chain ${chainId}: balance below threshold — pausing claims`);
     sponsorBalanceState.set(chainId, state);
     return !state.paused;
