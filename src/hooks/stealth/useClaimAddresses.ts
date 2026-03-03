@@ -129,7 +129,7 @@ export function useClaimAddresses() {
     setIsInitialized(false);
     setSelectedIndex(0);
     signatureRef.current = null;
-  }, [address]);
+  }, [address, activeChainId]);
 
   return {
     claimAddresses, selectedAddress, selectedIndex,

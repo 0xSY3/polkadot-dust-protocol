@@ -193,9 +193,9 @@ async function fetchSwapPoolStats(
 }
 
 export function usePoolStats(chainIdParam?: number): PoolStatsData {
-  const publicClient = usePublicClient()
   const walletChainId = useChainId()
   const chainId = chainIdParam ?? walletChainId
+  const publicClient = usePublicClient({ chainId })
 
   const [sqrtPriceX96, setSqrtPriceX96] = useState<bigint>(BigInt(0))
   const [tick, setTick] = useState<number>(0)

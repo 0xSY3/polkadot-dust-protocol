@@ -3,8 +3,10 @@ import {
   checkRelayerHealth, getRelayerInfo, calculateRelayerFee, submitRelayerWithdraw,
   waitForJobCompletion, type RelayerInfo, type FeeCalculation, type JobStatus,
 } from '@/lib/stealth/relayer';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useRelayer() {
+  const { activeChainId } = useAuth();
   const [isAvailable, setIsAvailable] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [relayerInfo, setRelayerInfo] = useState<RelayerInfo | null>(null);
@@ -18,16 +20,16 @@ export function useRelayer() {
     setError(null);
 
     try {
-      const healthy = await checkRelayerHealth();
+      const healthy = await checkRelayerHealth(activeChainId);
       setIsAvailable(healthy);
-      setRelayerInfo(healthy ? await getRelayerInfo() : null);
+      setRelayerInfo(healthy ? await getRelayerInfo(activeChainId) : null);
     } catch {
       setIsAvailable(false);
       setRelayerInfo(null);
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }, [activeChainId]);
 
   useEffect(() => { refreshRelayerInfo(); }, [refreshRelayerInfo]);
 
@@ -37,12 +39,12 @@ export function useRelayer() {
       return null;
     }
     try {
-      return await calculateRelayerFee(stealthAddress);
+      return await calculateRelayerFee(stealthAddress, activeChainId);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to calculate fee');
       return null;
     }
-  }, [isAvailable]);
+  }, [isAvailable, activeChainId]);
 
   const withdraw = useCallback(async (
     stealthAddress: string,
@@ -61,11 +63,11 @@ export function useRelayer() {
     setCurrentJobId(null);
 
     try {
-      const response = await submitRelayerWithdraw(stealthAddress, signature, recipient, owner);
+      const response = await submitRelayerWithdraw(stealthAddress, signature, recipient, owner, activeChainId);
       if (!response) throw new Error('Failed to submit withdrawal');
 
       setCurrentJobId(response.jobId);
-      const finalStatus = await waitForJobCompletion(response.jobId, 60, 2000);
+      const finalStatus = await waitForJobCompletion(response.jobId, 60, 2000, activeChainId);
       setJobStatus(finalStatus);
 
       if (finalStatus?.status === 'failed') {
@@ -78,7 +80,7 @@ export function useRelayer() {
     } finally {
       setIsWithdrawing(false);
     }
-  }, [isAvailable]);
+  }, [isAvailable, activeChainId]);
 
   const clearError = useCallback(() => setError(null), []);
 

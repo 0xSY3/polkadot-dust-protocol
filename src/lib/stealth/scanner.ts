@@ -9,22 +9,58 @@ import { getChainConfig } from '@/config/chains';
 
 const secp256k1 = new EC('secp256k1');
 
-// drpc.org free tier limits eth_getLogs to 10K blocks per query
-const MAX_BLOCK_RANGE = 9_999;
+// L2s produce blocks faster — larger ranges are needed and supported by their RPCs
+const BLOCK_RANGE_BY_CHAIN: Record<number, number> = {
+  11155111: 9_999,     // Eth Sepolia (drpc.org limit)
+  111551119090: 9_999, // Thanos Sepolia
+  421614: 100_000,     // Arbitrum Sepolia (~0.25s blocks)
+  11155420: 50_000,    // OP Sepolia (2s blocks)
+  84532: 50_000,       // Base Sepolia (2s blocks)
+};
+const DEFAULT_BLOCK_RANGE = 9_999;
+
+function getMaxBlockRange(chainId?: number): number {
+  if (!chainId) return DEFAULT_BLOCK_RANGE;
+  return BLOCK_RANGE_BY_CHAIN[chainId] ?? DEFAULT_BLOCK_RANGE;
+}
+
+const MAX_RETRIES = 3;
+const BASE_BACKOFF_MS = 500;
+
+async function queryWithRetry(
+  contract: ethers.Contract,
+  filter: ethers.EventFilter,
+  from: number,
+  to: number,
+): Promise<ethers.Event[]> {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await contract.queryFilter(filter, from, to);
+    } catch (err) {
+      if (attempt === MAX_RETRIES) throw err;
+      const delay = BASE_BACKOFF_MS * 2 ** attempt;
+      console.warn(`[Scanner] queryFilter failed (attempt ${attempt + 1}/${MAX_RETRIES + 1}), retrying in ${delay}ms`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  return []; // unreachable
+}
 
 async function chunkedQueryFilter(
   contract: ethers.Contract,
   filter: ethers.EventFilter,
   from: number,
   to: number,
+  chainId?: number,
 ): Promise<ethers.Event[]> {
-  if (to - from <= MAX_BLOCK_RANGE) {
-    return contract.queryFilter(filter, from, to);
+  const maxRange = getMaxBlockRange(chainId);
+  if (to - from <= maxRange) {
+    return queryWithRetry(contract, filter, from, to);
   }
   const allEvents: ethers.Event[] = [];
-  for (let start = from; start <= to; start += MAX_BLOCK_RANGE + 1) {
-    const end = Math.min(start + MAX_BLOCK_RANGE, to);
-    const events = await contract.queryFilter(filter, start, end);
+  for (let start = from; start <= to; start += maxRange + 1) {
+    const end = Math.min(start + maxRange, to);
+    const events = await queryWithRetry(contract, filter, start, end);
     allEvents.push(...events);
   }
   return allEvents;
@@ -100,7 +136,7 @@ export async function scanAnnouncements(
   const resolvedTo = toBlock === 'latest' || toBlock === undefined
     ? await provider.getBlockNumber()
     : toBlock;
-  const events = await chunkedQueryFilter(announcer, filter, fromBlock, resolvedTo);
+  const events = await chunkedQueryFilter(announcer, filter, fromBlock, resolvedTo, chainId);
 
   const results: ScanResult[] = [];
 
@@ -224,7 +260,7 @@ export async function scanAnnouncementsViewOnly(
   const resolvedTo = toBlock === 'latest' || toBlock === undefined
     ? await provider.getBlockNumber()
     : toBlock;
-  const events = await chunkedQueryFilter(announcer, filter, fromBlock, resolvedTo);
+  const events = await chunkedQueryFilter(announcer, filter, fromBlock, resolvedTo, chainId);
 
   const matches: StealthAnnouncement[] = [];
 
@@ -233,7 +269,7 @@ export async function scanAnnouncementsViewOnly(
     if (!announcement) continue;
 
     const expectedTag = computeViewTag(viewingPrivateKey, announcement.ephemeralPublicKey);
-    if (announcement.viewTag && announcement.viewTag !== expectedTag) continue;
+    if (announcement.viewTag && !constantTimeEqual(announcement.viewTag, expectedTag)) continue;
 
     // Check EOA match (legacy)
     if (verifyStealthAddress(announcement.ephemeralPublicKey, spendingPublicKey, announcement.stealthAddress, viewingPrivateKey)) {
@@ -298,13 +334,14 @@ export async function getAnnouncementCount(
   provider: ethers.providers.Provider,
   fromBlock: number,
   toBlock?: number | 'latest',
-  announcerAddress = CANONICAL_ADDRESSES.announcer
+  announcerAddress = CANONICAL_ADDRESSES.announcer,
+  chainId?: number,
 ): Promise<number> {
   const announcer = new ethers.Contract(announcerAddress, ANNOUNCER_ABI, provider);
   const filter = announcer.filters.Announcement(SCHEME_ID.SECP256K1, null, null);
   const resolvedTo = toBlock === 'latest' || toBlock === undefined
     ? await provider.getBlockNumber()
     : toBlock;
-  const events = await chunkedQueryFilter(announcer, filter, fromBlock, resolvedTo);
+  const events = await chunkedQueryFilter(announcer, filter, fromBlock, resolvedTo, chainId);
   return events.length;
 }

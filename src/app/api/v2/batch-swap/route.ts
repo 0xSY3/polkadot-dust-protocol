@@ -1,19 +1,18 @@
 import { ethers } from 'ethers'
 import { NextResponse } from 'next/server'
-import { getServerSponsor } from '@/lib/server-provider'
+import { getServerSponsor, getMaxGasPrice } from '@/lib/server-provider'
 import { DEFAULT_CHAIN_ID } from '@/config/chains'
 import { getDustSwapAdapterV2Config, getVanillaPoolKey, DUST_SWAP_ADAPTER_V2_ABI } from '@/lib/swap/contracts'
+import { getDustPoolV2Address, DUST_POOL_V2_ABI } from '@/lib/dustpool/v2/contracts'
 import { syncAndPostRoot } from '@/lib/dustpool/v2/relayer-tree'
 import { toBytes32Hex } from '@/lib/dustpool/poseidon'
 import { computeAssetId } from '@/lib/dustpool/v2/commitment'
 import { acquireNullifier, releaseNullifier } from '@/lib/dustpool/v2/pending-nullifiers'
 import { checkCooldown } from '@/lib/dustpool/v2/persistent-cooldown'
-import { screenRecipient } from '@/lib/dustpool/v2/relayer-compliance'
 
 export const maxDuration = 120
 
 const NO_STORE = { 'Cache-Control': 'no-store' } as const
-const MAX_GAS_PRICE = ethers.utils.parseUnits('100', 'gwei')
 const MIN_JITTER_MS = 2_000
 const MAX_JITTER_MS = 15_000
 const MAX_BATCH_SIZE = 12
@@ -222,15 +221,13 @@ export async function POST(req: Request) {
             '0x' + recipientBigInt.toString(16).padStart(40, '0'),
           )
 
-          const screenResult = await screenRecipient(recipient, chainId)
-          if (screenResult.blocked) {
-            errors.push({ index: item.originalIndex, error: 'Recipient address is sanctioned' })
-            continue
-          }
+          // Swap outputs are UTXO commitments re-deposited into DustPoolV2 —
+          // recipient is the adapter contract (validated at line 156), not an end-user.
+          // Screening skipped intentionally (matches single swap route behavior).
 
           const feeData = await sponsor.provider.getFeeData()
           const maxFeePerGas = feeData.maxFeePerGas || ethers.utils.parseUnits('5', 'gwei')
-          if (maxFeePerGas.gt(MAX_GAS_PRICE)) {
+          if (maxFeePerGas.gt(getMaxGasPrice(chainId))) {
             errors.push({ index: item.originalIndex, error: 'Gas price too high' })
             continue
           }
@@ -295,6 +292,26 @@ export async function POST(req: Request) {
             }
           } catch (parseErr) {
             console.warn(`[V2/batch-swap] Event parsing failed for chunk ${si + 1}:`, parseErr)
+          }
+
+          // Parse DepositQueued from DustPoolV2 for the output UTXO queue index
+          const poolAddress = getDustPoolV2Address(chainId)
+          if (poolAddress) {
+            const pool = new ethers.Contract(
+              poolAddress,
+              DUST_POOL_V2_ABI as unknown as ethers.ContractInterface,
+              sponsor.provider,
+            )
+            for (const log of receipt.logs) {
+              if (log.address.toLowerCase() === poolAddress.toLowerCase()) {
+                try {
+                  const parsed = pool.interface.parseLog(log)
+                  if (parsed.name === 'DepositQueued') {
+                    queueIndex = parsed.args.queueIndex.toNumber()
+                  }
+                } catch { /* not our event */ }
+              }
+            }
           }
 
           console.log(

@@ -23,6 +23,19 @@ const ERC20_BALANCE_ABI = [
   'function balanceOf(address) view returns (uint256)',
 ];
 
+// L2 public RPCs have stricter rate limits — longer polling intervals
+const BG_SCAN_INTERVAL_MS: Record<number, number> = {
+  11155111: 3_000,     // Eth Sepolia (generous free-tier)
+  111551119090: 3_000, // Thanos Sepolia
+  421614: 10_000,      // Arbitrum Sepolia (~0.25s blocks, strict rate limits)
+  11155420: 10_000,    // OP Sepolia (2s blocks)
+  84532: 10_000,       // Base Sepolia (2s blocks)
+};
+const DEFAULT_BG_SCAN_INTERVAL_MS = 10_000;
+
+// L2 public RPCs don't support archive queries (getBalance at historical block)
+const ARCHIVE_SUPPORTED: Set<number> = new Set([11155111, 111551119090]);
+
 interface StealthPayment extends ScanResult {
   balance?: string;
   originalAmount?: string;
@@ -829,13 +842,15 @@ export function useStealthScanner(stealthKeys: StealthKeyPair | null, options?: 
             const bal = await batchProvider.getBalance(addr);
             const balance = ethers.utils.formatEther(bal);
 
-            // Historical balance requires archive RPC — best-effort
+            // Historical balance requires archive RPC — only attempt on supported chains
             let originalAmount = balance;
-            try {
-              const historicalBal = await batchProvider.getBalance(addr, r.announcement.blockNumber);
-              originalAmount = ethers.utils.formatEther(historicalBal);
-            } catch {
-              // Non-archive RPC: fall back to current balance
+            if (ARCHIVE_SUPPORTED.has(chainId)) {
+              try {
+                const historicalBal = await batchProvider.getBalance(addr, r.announcement.blockNumber);
+                originalAmount = ethers.utils.formatEther(historicalBal);
+              } catch {
+                // Non-archive RPC: fall back to current balance
+              }
             }
 
             // Fetch ERC-20 token balances
@@ -952,15 +967,15 @@ export function useStealthScanner(stealthKeys: StealthKeyPair | null, options?: 
 
   const scanInBackground = useCallback(() => {
     if (scanIntervalRef.current) return;
-    // First scan is visible (full scan), subsequent ones are silent (incremental)
     scanRef.current();
+    const interval = BG_SCAN_INTERVAL_MS[chainId] ?? DEFAULT_BG_SCAN_INTERVAL_MS;
     scanIntervalRef.current = setInterval(() => {
       if (!isBgScanningRef.current) {
         isBgScanningRef.current = true;
         scanRef.current(undefined, true).finally(() => { isBgScanningRef.current = false; });
       }
-    }, 3000);
-  }, []);
+    }, interval);
+  }, [chainId]);
 
   const stopBackgroundScan = useCallback(() => {
     if (scanIntervalRef.current) {

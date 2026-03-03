@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import { NextResponse } from 'next/server';
 import { getChainConfig } from '@/config/chains';
 import { isKnownToken } from '@/config/tokens';
-import { getServerProvider, getServerSponsor, parseChainId } from '@/lib/server-provider';
+import { getServerProvider, getServerSponsor, parseChainId, getMaxGasPrice } from '@/lib/server-provider';
 import { canUseGelato, sponsoredRelay, waitForRelay } from '@/lib/relay/gelato';
 
 export const maxDuration = 60;
@@ -12,18 +12,16 @@ const SPONSOR_KEY = process.env.RELAYER_PRIVATE_KEY;
 // Rate limiting: per-address cooldown + global request counter
 const claimCooldowns = new Map<string, number>();
 const CLAIM_COOLDOWN_MS = 10_000; // 10 seconds between claims per stealth address
-const MAX_GAS_PRICE = ethers.utils.parseUnits('100', 'gwei'); // Gas price cap
 
 // Global rate limiting: max claims per time window across all addresses
 const GLOBAL_WINDOW_MS = 60_000; // 1 minute window
 const GLOBAL_MAX_CLAIMS = 10; // max 10 claims per minute globally
 let globalClaimTimestamps: number[] = [];
 
-// Sponsor balance monitoring
-const MIN_SPONSOR_BALANCE = ethers.utils.parseEther('0.1'); // Emergency pause threshold
-let lastBalanceCheck = 0;
-let sponsorBalancePaused = false;
-const BALANCE_CHECK_INTERVAL_MS = 30_000; // Check every 30s
+// Sponsor balance monitoring — per-chain to avoid one low-balance chain pausing all
+const sponsorBalanceState = new Map<number, { paused: boolean; lastCheck: number }>();
+const MIN_SPONSOR_BALANCE = ethers.utils.parseEther('0.1');
+const BALANCE_CHECK_INTERVAL_MS = 30_000;
 
 function checkGlobalRateLimit(): boolean {
   const now = Date.now();
@@ -33,17 +31,20 @@ function checkGlobalRateLimit(): boolean {
   return true;
 }
 
-async function checkSponsorBalance(provider: ethers.providers.Provider, sponsorAddress: string): Promise<boolean> {
+async function checkSponsorBalance(provider: ethers.providers.Provider, sponsorAddress: string, chainId: number): Promise<boolean> {
   const now = Date.now();
-  if (now - lastBalanceCheck < BALANCE_CHECK_INTERVAL_MS) return !sponsorBalancePaused;
-  lastBalanceCheck = now;
+  const state = sponsorBalanceState.get(chainId) ?? { paused: false, lastCheck: 0 };
+  if (now - state.lastCheck < BALANCE_CHECK_INTERVAL_MS) return !state.paused;
+  state.lastCheck = now;
   try {
     const balance = await provider.getBalance(sponsorAddress);
-    sponsorBalancePaused = balance.lt(MIN_SPONSOR_BALANCE);
-    if (sponsorBalancePaused) console.error('[Sponsor] Balance below threshold — pausing claims');
-    return !sponsorBalancePaused;
+    state.paused = balance.lt(MIN_SPONSOR_BALANCE);
+    if (state.paused) console.error(`[Sponsor] Chain ${chainId}: balance below threshold — pausing claims`);
+    sponsorBalanceState.set(chainId, state);
+    return !state.paused;
   } catch {
-    return !sponsorBalancePaused; // Don't block on check failure
+    sponsorBalanceState.set(chainId, state);
+    return !state.paused;
   }
 }
 
@@ -84,7 +85,7 @@ export async function POST(req: Request) {
     // Sponsor balance monitoring
     const provider = getServerProvider(chainId);
     const sponsor = getServerSponsor(chainId);
-    if (!(await checkSponsorBalance(provider, sponsor.address))) {
+    if (!(await checkSponsorBalance(provider, sponsor.address, chainId))) {
       return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
     }
 
@@ -147,7 +148,7 @@ async function handleCreate2Claim(body: { stealthAddress: string; owner: string;
     ? baseFee.add(maxPriorityFee).mul(2)
     : baseFee.mul(3);
 
-  if (maxFeePerGas.gt(MAX_GAS_PRICE)) {
+  if (maxFeePerGas.gt(getMaxGasPrice(chainId))) {
     return NextResponse.json({ error: 'Gas price too high, try again later' }, { status: 503 });
   }
 
@@ -292,7 +293,7 @@ async function handleTokenSweep(
     ? baseFee.add(maxPriorityFee).mul(2)
     : baseFee.mul(3);
 
-  if (maxFeePerGas.gt(MAX_GAS_PRICE)) {
+  if (maxFeePerGas.gt(getMaxGasPrice(chainId))) {
     return NextResponse.json({ error: 'Gas price too high, try again later' }, { status: 503 });
   }
 

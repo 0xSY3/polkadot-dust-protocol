@@ -50,9 +50,9 @@ export interface ChainlinkPriceData {
 }
 
 export function useChainlinkPrice(chainIdParam?: number): ChainlinkPriceData {
-  const publicClient = usePublicClient()
   const walletChainId = useChainId()
   const chainId = chainIdParam ?? walletChainId
+  const publicClient = usePublicClient({ chainId })
 
   const [price, setPrice] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)

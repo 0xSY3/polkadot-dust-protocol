@@ -1,6 +1,6 @@
 import { ethers } from 'ethers'
 import { NextResponse } from 'next/server'
-import { getServerSponsor } from '@/lib/server-provider'
+import { getServerSponsor, getMaxGasPrice } from '@/lib/server-provider'
 import { DEFAULT_CHAIN_ID } from '@/config/chains'
 import { getDustPoolV2Address, DUST_POOL_V2_ABI } from '@/lib/dustpool/v2/contracts'
 import { syncAndPostRoot } from '@/lib/dustpool/v2/relayer-tree'
@@ -13,7 +13,6 @@ import { screenRecipient } from '@/lib/dustpool/v2/relayer-compliance'
 export const maxDuration = 60
 
 const NO_STORE = { 'Cache-Control': 'no-store' } as const
-const MAX_GAS_PRICE = ethers.utils.parseUnits('100', 'gwei')
 
 export async function POST(req: Request) {
   try {
@@ -111,7 +110,7 @@ export async function POST(req: Request) {
 
       const feeData = await sponsor.provider.getFeeData()
       const maxFeePerGas = feeData.maxFeePerGas || ethers.utils.parseUnits('5', 'gwei')
-      if (maxFeePerGas.gt(MAX_GAS_PRICE)) {
+      if (maxFeePerGas.gt(getMaxGasPrice(chainId))) {
         return NextResponse.json({ error: 'Gas price too high' }, { status: 503, headers: NO_STORE })
       }
 

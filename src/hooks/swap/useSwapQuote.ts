@@ -9,15 +9,18 @@ import {
   getVanillaPoolKey,
   getSwapDirection,
 } from '@/lib/swap/contracts'
-import { SUPPORTED_TOKENS } from '@/lib/swap/constants'
+import { SUPPORTED_TOKENS, ETH_ADDRESS } from '@/lib/swap/constants'
 import { getChainConfig } from '@/config/chains'
 
 function getTokenDecimals(tokenAddress: Address): number {
   const addr = tokenAddress.toLowerCase()
+  if (addr === ETH_ADDRESS.toLowerCase()) return 18
+  // Any non-ETH token in our supported set is USDC (6 decimals)
   for (const token of Object.values(SUPPORTED_TOKENS)) {
     if (token.address.toLowerCase() === addr) return token.decimals
   }
-  return 18
+  // USDC addresses vary by chain — if it's not ETH, assume 6 decimals
+  return 6
 }
 
 interface UseSwapQuoteParams {
@@ -43,7 +46,7 @@ export function useSwapQuote({
   amountIn,
   chainId,
 }: UseSwapQuoteParams): SwapQuoteResult {
-  const publicClient = usePublicClient()
+  const publicClient = usePublicClient({ chainId })
 
   const [amountOut, setAmountOut] = useState<bigint>(0n)
   const [gasEstimate, setGasEstimate] = useState<bigint>(0n)

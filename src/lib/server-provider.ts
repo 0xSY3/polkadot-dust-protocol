@@ -91,6 +91,20 @@ export function getServerSponsor(chainId?: number): ethers.Wallet {
   return sponsor;
 }
 
+// L2s have much lower gas prices (0.01-1 gwei) — a 100 gwei cap provides no protection there
+const MAX_GAS_PRICE_BY_CHAIN: Record<number, ethers.BigNumber> = {
+  11155111: ethers.utils.parseUnits('100', 'gwei'),
+  111551119090: ethers.utils.parseUnits('100', 'gwei'),
+  421614: ethers.utils.parseUnits('5', 'gwei'),
+  11155420: ethers.utils.parseUnits('5', 'gwei'),
+  84532: ethers.utils.parseUnits('5', 'gwei'),
+};
+const DEFAULT_MAX_GAS = ethers.utils.parseUnits('100', 'gwei');
+
+export function getMaxGasPrice(chainId: number): ethers.BigNumber {
+  return MAX_GAS_PRICE_BY_CHAIN[chainId] ?? DEFAULT_MAX_GAS;
+}
+
 export function parseChainId(body: Record<string, unknown>): number {
   const chainId = body.chainId;
   if (typeof chainId === 'number' && Number.isFinite(chainId)) return chainId;

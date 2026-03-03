@@ -5,7 +5,7 @@ import {
   resolveStealthName, isNameAvailable, getNamesOwnedBy,
   isNameRegistryConfigured, stripNameSuffix,
   formatNameWithSuffix, isValidName, getNameOwner, discoverNameByMetaAddress,
-  discoverNameByWalletHistory, CANONICAL_ADDRESSES,
+  discoverNameByWalletHistory, getRegistryForChain,
 } from '@/lib/stealth';
 import { DEFAULT_CHAIN_ID } from '@/config/chains';
 import { useNamesOwnedBy, useNamesByMetaAddress, useNamesByWallet } from '@/hooks/graph/useNameQuery';
@@ -133,12 +133,12 @@ export function useStealthName(userMetaAddress?: string | null, chainId?: number
   // Background recovery: transfer name ownership from deployer to user (fire-and-forget)
   const tryRecoverName = useCallback(async (name: string, userAddress: string) => {
     try {
-      const owner = await getNameOwner(null, name, chainId);
+      const owner = await getNameOwner(null, name, activeChainId);
       if (!owner || owner.toLowerCase() === userAddress.toLowerCase()) return;
       const res = await fetch('/api/sponsor-name-transfer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, newOwner: userAddress, chainId }),
+        body: JSON.stringify({ name, newOwner: userAddress, chainId: activeChainId }),
       });
       if (res.ok) {
         queryClient.invalidateQueries({ queryKey: ['names'] });
@@ -147,7 +147,7 @@ export function useStealthName(userMetaAddress?: string | null, chainId?: number
     } catch {
       // Silent — recovery is best-effort
     }
-  }, [chainId, queryClient]);
+  }, [activeChainId, queryClient]);
 
   const registeringNameRef = useRef(false);
 
@@ -207,7 +207,7 @@ export function useStealthName(userMetaAddress?: string | null, chainId?: number
       // RPC discovery chain (sequential within itself)
       const rpcPromise = (async () => {
         // 1. Direct on-chain ownership lookup (fast when auto-transfer succeeded)
-        const names = await getNamesOwnedBy(null, address, chainId);
+        const names = await getNamesOwnedBy(null, address, activeChainId);
         if (names.length > 0) {
           setNameOnce(names[names.length - 1]);
           return;
@@ -215,7 +215,7 @@ export function useStealthName(userMetaAddress?: string | null, chainId?: number
 
         // 2. metaAddress-based discovery (needs derived keys)
         if (currentMetaAddress) {
-          const d = await discoverNameByMetaAddress(null, currentMetaAddress, chainId);
+          const d = await discoverNameByMetaAddress(null, currentMetaAddress, activeChainId);
           if (d) { setNameOnce(d); return; }
         }
 
@@ -223,8 +223,8 @@ export function useStealthName(userMetaAddress?: string | null, chainId?: number
         const d = await discoverNameByWalletHistory(
           address,
           currentMetaAddress ?? '',
-          CANONICAL_ADDRESSES.registry,
-          chainId,
+          getRegistryForChain(activeChainId),
+          activeChainId,
         );
         if (d) setNameOnce(d);
       })();
@@ -243,7 +243,7 @@ export function useStealthName(userMetaAddress?: string | null, chainId?: number
     }
   // userMetaAddress intentionally excluded — read via ref to prevent re-run on key derivation.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, isConnected, isConfigured, chainId, graphEnabled, graphFailed, graphOwnerFailed, refetchGraphNames, tryRecoverName]);
+  }, [address, isConnected, isConfigured, activeChainId, graphEnabled, graphFailed, graphOwnerFailed, refetchGraphNames, tryRecoverName]);
 
   // Initial load trigger
   // Run legacy discovery when:
@@ -296,7 +296,7 @@ export function useStealthName(userMetaAddress?: string | null, chainId?: number
       const res = await fetch('/api/sponsor-name-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: stripNameSuffix(name), metaAddress, chainId, registrant: address }),
+        body: JSON.stringify({ name: stripNameSuffix(name), metaAddress, chainId: activeChainId, registrant: address }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Name registration failed');
@@ -320,7 +320,7 @@ export function useStealthName(userMetaAddress?: string | null, chainId?: number
       setIsLoading(false);
       registeringNameRef.current = false;
     }
-  }, [isConnected, isConfigured, validateName, chainId, activeChainId, queryClient]);
+  }, [isConnected, isConfigured, validateName, activeChainId, queryClient, address]);
 
   const checkAvailability = useCallback(async (name: string): Promise<boolean | null> => {
     if (!isConfigured) return null;

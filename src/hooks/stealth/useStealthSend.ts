@@ -1,13 +1,14 @@
 import { useState, useCallback, useRef } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useWalletClient } from 'wagmi';
 import { ethers } from 'ethers';
 import {
   generateStealthAddress, parseStealthMetaAddress, lookupStealthMetaAddress,
-  CANONICAL_ADDRESSES, SCHEME_ID, type GeneratedStealthAddress,
+  getRegistryForChain, SCHEME_ID, type GeneratedStealthAddress,
 } from '@/lib/stealth';
 import type { OutgoingPayment } from '@/lib/design/types';
 import { getChainConfig, DEFAULT_CHAIN_ID } from '@/config/chains';
 import { getChainProvider } from '@/lib/providers';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { storageKey, migrateKey } from '@/lib/storageKey';
 
@@ -39,19 +40,6 @@ export function loadOutgoingPayments(senderAddress: string, chainId?: number): O
 const ANNOUNCER_ABI = [
   'function announce(uint256 schemeId, address stealthAddress, bytes calldata ephemeralPubKey, bytes calldata metadata) external',
 ];
-
-function getProvider() {
-  if (typeof window === 'undefined' || !window.ethereum) return null;
-  return new ethers.providers.Web3Provider(window.ethereum as ethers.providers.ExternalProvider);
-}
-
-// Request account authorization before creating provider — prevents "unknown account #0" error
-// when window.ethereum exists but no accounts are authorized (MetaMask locked, Privy mismatch)
-async function getProviderWithAccounts(): Promise<ethers.providers.Web3Provider | null> {
-  if (typeof window === 'undefined' || !window.ethereum) return null;
-  await window.ethereum.request({ method: 'eth_requestAccounts' });
-  return new ethers.providers.Web3Provider(window.ethereum as ethers.providers.ExternalProvider);
-}
 
 /** Switch MetaMask to the target chain, adding it if needed */
 async function ensureChain(chainId: number): Promise<void> {
@@ -175,8 +163,10 @@ function validateSendAmount(
 
 
 export function useStealthSend(chainId?: number) {
-  const activeChainId = chainId ?? DEFAULT_CHAIN_ID;
+  const { activeChainId: authChainId } = useAuth();
+  const activeChainId = chainId ?? authChainId;
   const { isConnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
   const [lastGeneratedAddress, setLastGeneratedAddress] = useState<GeneratedStealthAddress | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -200,7 +190,7 @@ export function useStealthSend(chainId?: number) {
     setIsLoading(true);
     try {
       const provider = getChainProvider(activeChainId);
-      const metaBytes = await lookupStealthMetaAddress(provider, recipientAddress);
+      const metaBytes = await lookupStealthMetaAddress(provider, recipientAddress, SCHEME_ID.SECP256K1, getRegistryForChain(activeChainId));
       if (!metaBytes) throw new Error('Recipient has no registered stealth address');
 
       const uri = `st:thanos:0x${metaBytes.replace(/^0x/, '')}`;
@@ -218,15 +208,10 @@ export function useStealthSend(chainId?: number) {
 
   // Get maximum sendable amount (exposed for UI "Max" button)
   const getMaxSendable = useCallback(async (): Promise<string | null> => {
-    if (!isConnected) return null;
+    if (!isConnected || !walletClient) return null;
     try {
-      const provider = getProvider();
-      if (!provider) return null;
-
-      // listAccounts doesn't throw when no accounts are authorized (returns [])
-      const accounts = await provider.listAccounts();
-      if (accounts.length === 0) return null;
-      const address = accounts[0];
+      const provider = new ethers.providers.Web3Provider(walletClient.transport);
+      const address = await provider.getSigner().getAddress();
 
       const rpcProvider = getChainProvider(activeChainId);
       const { maxAmount } = await calculateMaxSendable(rpcProvider, address);
@@ -236,7 +221,7 @@ export function useStealthSend(chainId?: number) {
     } catch {
       return null;
     }
-  }, [activeChainId, isConnected]);
+  }, [activeChainId, isConnected, walletClient]);
 
   const sendEthToStealth = useCallback(async (metaAddress: string, amount: string, linkSlug?: string): Promise<string | null> => {
     if (!isConnected) { setError('Wallet not connected'); return null; }
@@ -248,9 +233,9 @@ export function useStealthSend(chainId?: number) {
     const config = getChainConfig(activeChainId);
 
     try {
+      if (!walletClient) throw new Error('Wallet not ready — please try again');
       await ensureChain(activeChainId);
-      const provider = await getProviderWithAccounts();
-      if (!provider) throw new Error('No wallet provider — please install or unlock a browser wallet');
+      const provider = new ethers.providers.Web3Provider(walletClient.transport);
       const signer = provider.getSigner();
       const signerAddress = await signer.getAddress();
 
@@ -318,7 +303,7 @@ export function useStealthSend(chainId?: number) {
       setIsLoading(false);
       sendingRef.current = false;
     }
-  }, [isConnected, activeChainId, generateAddressFor]);
+  }, [isConnected, activeChainId, walletClient, generateAddressFor]);
 
   const sendTokenToStealth = useCallback(async (metaAddress: string, tokenAddress: string, amount: string): Promise<string | null> => {
     if (!isConnected) { setError('Wallet not connected'); return null; }
@@ -330,9 +315,9 @@ export function useStealthSend(chainId?: number) {
     const config = getChainConfig(activeChainId);
 
     try {
+      if (!walletClient) throw new Error('Wallet not ready — please try again');
       await ensureChain(activeChainId);
-      const provider = await getProviderWithAccounts();
-      if (!provider) throw new Error('No wallet provider — please install or unlock a browser wallet');
+      const provider = new ethers.providers.Web3Provider(walletClient.transport);
       const signer = provider.getSigner();
       const signerAddress = await signer.getAddress();
 
@@ -393,7 +378,7 @@ export function useStealthSend(chainId?: number) {
       setIsLoading(false);
       sendingRef.current = false;
     }
-  }, [isConnected, activeChainId, generateAddressFor]);
+  }, [isConnected, activeChainId, walletClient, generateAddressFor]);
 
   const announcePayment = useCallback(async (stealthAddress: string, ephemeralPublicKey: string, viewTag: string): Promise<string | null> => {
     if (!isConnected) { setError('Wallet not connected'); return null; }
@@ -401,9 +386,9 @@ export function useStealthSend(chainId?: number) {
     setIsLoading(true);
 
     try {
+      if (!walletClient) throw new Error('Wallet not ready — please try again');
       const config = getChainConfig(activeChainId);
-      const provider = await getProviderWithAccounts();
-      if (!provider) throw new Error('No wallet provider — please install or unlock a browser wallet');
+      const provider = new ethers.providers.Web3Provider(walletClient.transport);
       const signer = provider.getSigner();
 
       const announcer = new ethers.Contract(config.contracts.announcer, ANNOUNCER_ABI, signer);
@@ -416,7 +401,7 @@ export function useStealthSend(chainId?: number) {
     } finally {
       setIsLoading(false);
     }
-  }, [isConnected, activeChainId]);
+  }, [isConnected, activeChainId, walletClient]);
 
   return {
     generateAddressFor,

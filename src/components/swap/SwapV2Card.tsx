@@ -3,10 +3,8 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { formatUnits, parseUnits, zeroAddress } from "viem";
 import { ChevronDownIcon } from "lucide-react";
-import { SUPPORTED_TOKENS, type SwapToken, isSwapSupported, RELAYER_FEE_BPS, getUSDCAddress, ETH_ADDRESS } from "@/lib/swap/constants";
+import { SUPPORTED_TOKENS, getSupportedTokens, type SwapToken, isSwapSupported, RELAYER_FEE_BPS, getUSDCAddress, ETH_ADDRESS } from "@/lib/swap/constants";
 import { COMPLIANCE_COOLDOWN_THRESHOLD_USD } from "@/lib/dustpool/v2/constants";
-import { DEFAULT_CHAIN_ID } from "@/config/chains";
-import { useSwitchChain } from "wagmi";
 import { useAuth } from "@/contexts/AuthContext";
 import { UnsupportedChainNotice } from "@/components/ui/UnsupportedChainNotice";
 import { useV2Keys, useV2Balance } from "@/hooks/dustpool/v2";
@@ -88,15 +86,26 @@ export function formatExchangeRate(rate: number): string {
 export function SwapV2Card({ onPoolChange, oraclePrice }: { onPoolChange?: () => void; oraclePrice?: number | null }) {
   const { isConnected, activeChainId } = useAuth();
   const swapSupported = isSwapSupported(activeChainId);
-  const { switchChain } = useSwitchChain();
 
   const { keysRef, hasKeys, hasPin, isDeriving, error: keyError, deriveKeys } = useV2Keys();
 
   const { balances, pendingDeposits, isLoading: balanceLoading, refreshBalances } = useV2Balance(keysRef, activeChainId);
 
   const [fromToken, setFromToken] = useState<SwapToken>(SUPPORTED_TOKENS.ETH);
-  const [toToken, setToToken] = useState<SwapToken>(SUPPORTED_TOKENS.USDC);
+  const [toToken, setToToken] = useState<SwapToken>(() => {
+    try { return getSupportedTokens(activeChainId).USDC; }
+    catch { return SUPPORTED_TOKENS.USDC; }
+  });
   const [amountStr, setAmountStr] = useState("");
+
+  // Update USDC address when chain changes
+  useEffect(() => {
+    try {
+      const chainTokens = getSupportedTokens(activeChainId);
+      setToToken(prev => prev.symbol === 'USDC' ? chainTokens.USDC : prev);
+      setFromToken(prev => prev.symbol === 'USDC' ? chainTokens.USDC : prev);
+    } catch { /* USDC not configured for this chain */ }
+  }, [activeChainId]);
   const [slippageBps, setSlippageBps] = useState(DEFAULT_SLIPPAGE_BPS);
   const [customSlippage, setCustomSlippage] = useState("");
   const [showSlippageSettings, setShowSlippageSettings] = useState(false);
@@ -358,14 +367,8 @@ export function SwapV2Card({ onPoolChange, oraclePrice }: { onPoolChange?: () =>
     setAmountStr(trimmed || '0');
   };
 
-  useEffect(() => {
-    if (isConnected && !swapSupported && switchChain) {
-      const timer = setTimeout(() => {
-        switchChain({ chainId: DEFAULT_CHAIN_ID });
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [isConnected, swapSupported, switchChain]);
+  // UnsupportedChainNotice banner + disabled swap button handles unsupported chains.
+  // No auto-switch — let the user decide when to switch chains.
 
   useEffect(() => {
     if (activeStatus === "done") {

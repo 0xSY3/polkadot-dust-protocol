@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import { NextResponse } from 'next/server';
 import { DUST_POOL_ABI } from '@/lib/stealth/types';
 import { getChainConfig } from '@/config/chains';
-import { getServerProvider, getServerSponsor, parseChainId } from '@/lib/server-provider';
+import { getServerProvider, getServerSponsor, parseChainId, getMaxGasPrice } from '@/lib/server-provider';
 
 export const maxDuration = 60;
 
@@ -20,7 +20,6 @@ const STEALTH_WALLET_ABI = [
 // Rate limiting
 const claimCooldowns = new Map<string, number>();
 const CLAIM_COOLDOWN_MS = 10_000;
-const MAX_GAS_PRICE = ethers.utils.parseUnits('100', 'gwei');
 const NO_STORE = { 'Cache-Control': 'no-store' } as const;
 
 function isValidAddress(addr: string): boolean {
@@ -81,7 +80,7 @@ export async function POST(req: Request) {
     const maxPriorityFee = feeData.maxPriorityFeePerGas || ethers.utils.parseUnits('1.5', 'gwei');
     const maxFeePerGas = baseFee.add(maxPriorityFee).mul(2);
 
-    if (maxFeePerGas.gt(MAX_GAS_PRICE)) {
+    if (maxFeePerGas.gt(getMaxGasPrice(chainId))) {
       return NextResponse.json({ error: 'Gas price too high' }, { status: 503 });
     }
 
