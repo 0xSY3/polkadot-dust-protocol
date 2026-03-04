@@ -6,6 +6,7 @@ import { getDustPoolV2Address } from '@/lib/dustpool/v2/contracts'
 import { getTreeSnapshot } from '@/lib/dustpool/v2/relayer-tree'
 import { toBytes32Hex } from '@/lib/dustpool/poseidon'
 import { runDepositScreenerCycle } from '@/lib/dustpool/v2/deposit-screener'
+import { setTreeLeafCount, setTreeRootAge } from '@/lib/metrics'
 
 export const maxDuration = 30
 
@@ -98,6 +99,10 @@ export async function GET(req: Request) {
     } catch (e) {
       console.error('[V2/health] Sponsor balance check error:', e instanceof Error ? e.message : e)
     }
+
+    const chainStr = String(chainId)
+    setTreeLeafCount(chainStr, snapshot.leafCount)
+    setTreeRootAge(chainStr, syncGap)
 
     const body = {
       ok,

@@ -3,6 +3,7 @@ import { getRelayerTreeRoot } from '@/lib/dustpool/v2/relayer-tree'
 import { getDustPoolV2Address } from '@/lib/dustpool/v2/contracts'
 import { DEFAULT_CHAIN_ID } from '@/config/chains'
 import { toBytes32Hex } from '@/lib/dustpool/poseidon'
+import { observeTreeSync } from '@/lib/metrics'
 
 export const maxDuration = 60
 
@@ -20,7 +21,9 @@ export async function GET(req: Request) {
       )
     }
 
+    const startTime = performance.now()
     const root = await getRelayerTreeRoot(chainId)
+    observeTreeSync(String(chainId), (performance.now() - startTime) / 1000)
 
     return NextResponse.json(
       { root: toBytes32Hex(root) },

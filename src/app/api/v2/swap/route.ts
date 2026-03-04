@@ -9,6 +9,7 @@ import { toBytes32Hex } from '@/lib/dustpool/poseidon'
 import { computeAssetId } from '@/lib/dustpool/v2/commitment'
 import { acquireNullifier, releaseNullifier } from '@/lib/dustpool/v2/pending-nullifiers'
 import { checkCooldown } from '@/lib/dustpool/v2/persistent-cooldown'
+import { incrementSwap, observeGasUsed, recordProofVerification } from '@/lib/metrics'
 
 export const maxDuration = 60
 
@@ -240,6 +241,11 @@ export async function POST(req: Request) {
           } catch { /* not our event */ }
         }
       }
+
+      const chainStr = String(chainId)
+      incrementSwap(chainStr)
+      recordProofVerification(chainStr, 'v2_transaction', true)
+      observeGasUsed(chainStr, 'swap', receipt.gasUsed.toNumber())
 
       console.log(
         `[V2/swap] Success: nullifier=${nullifier0.slice(0, 18)}... tx=${receipt.transactionHash}`,

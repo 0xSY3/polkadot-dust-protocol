@@ -9,6 +9,7 @@ import { computeAssetId } from '@/lib/dustpool/v2/commitment'
 import { acquireNullifier, releaseNullifier } from '@/lib/dustpool/v2/pending-nullifiers'
 import { checkCooldown } from '@/lib/dustpool/v2/persistent-cooldown'
 import { screenRecipient } from '@/lib/dustpool/v2/relayer-compliance'
+import { incrementWithdrawal, observeGasUsed, recordProofVerification } from '@/lib/metrics'
 
 export const maxDuration = 60
 
@@ -140,6 +141,11 @@ export async function POST(req: Request) {
       )
 
       const receipt = await tx.wait()
+
+      const chainStr = String(chainId)
+      incrementWithdrawal(chainStr, tokenAddress, 'v2')
+      recordProofVerification(chainStr, 'v2_transaction', true)
+      observeGasUsed(chainStr, 'withdraw', receipt.gasUsed.toNumber())
 
       console.log(
         `[V2/withdraw] Success: nullifier=${nullifier0.slice(0, 18)}... recipient=${recipient} tx=${receipt.transactionHash}`,

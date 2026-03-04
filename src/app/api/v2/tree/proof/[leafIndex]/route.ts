@@ -3,6 +3,7 @@ import { getRelayerTreeProof, getTreeLeafCount } from '@/lib/dustpool/v2/relayer
 import { getDustPoolV2Address } from '@/lib/dustpool/v2/contracts'
 import { DEFAULT_CHAIN_ID } from '@/config/chains'
 import { toBytes32Hex } from '@/lib/dustpool/poseidon'
+import { setTreeLeafCount } from '@/lib/metrics'
 
 export const maxDuration = 60
 
@@ -32,6 +33,7 @@ export async function GET(
     }
 
     const leafCount = await getTreeLeafCount(chainId)
+    setTreeLeafCount(String(chainId), leafCount)
     if (leafIndex >= leafCount) {
       return NextResponse.json(
         { error: `Leaf index ${leafIndex} out of range (tree has ${leafCount} leaves)` },
