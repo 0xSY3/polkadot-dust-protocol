@@ -326,8 +326,3 @@ contracts/
 - [An Incomplete Guide to Stealth Addresses](https://vitalik.eth.limo/general/2023/01/20/stealth.html) — Vitalik
 - [Uniswap V4 Hooks](https://docs.uniswap.org/contracts/v4/overview)
 
----
-
-## License
-
-MIT
