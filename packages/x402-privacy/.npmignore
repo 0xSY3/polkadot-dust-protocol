@@ -1,0 +1,9 @@
+src/
+test/
+examples/
+scripts/
+*.config.ts
+tsconfig.json
+vitest.config.ts
+.env*
+.gitignore
