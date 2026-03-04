@@ -94,6 +94,10 @@ contract DustPoolV2 {
     // Relayer whitelist
     mapping(address => bool) public relayers;
 
+    // Token whitelist — when enabled, only allowedAssets can be deposited
+    mapping(address => bool) public allowedAssets;
+    bool public whitelistEnabled;
+
     // Reentrancy guard (no OZ available)
     uint256 private constant _NOT_ENTERED = 1;
     uint256 private constant _ENTERED = 2;
@@ -123,6 +127,8 @@ contract DustPoolV2 {
     event ExclusionRootUpdated(bytes32 newRoot, uint256 index, address relayer);
     event DepositScreened(address indexed depositor, bool passed);
     event ComplianceProofVerified(bytes32 indexed nullifier, bytes32 exclusionRoot);
+    event WhitelistUpdated(bool enabled);
+    event AssetAllowed(address indexed asset, bool allowed);
 
     error ZeroCommitment();
     error ZeroValue();
@@ -151,6 +157,7 @@ contract DustPoolV2 {
     error ComplianceNotEnabled();
     error ZeroNullifier();
     error ZeroExclusionRoot();
+    error AssetNotAllowed(address asset);
 
     modifier onlyRelayer() {
         if (!relayers[msg.sender]) revert NotRelayer();
@@ -179,6 +186,8 @@ contract DustPoolV2 {
         SPLIT_VERIFIER = IFFLONKSplitVerifier(_splitVerifier);
         complianceOracle = IComplianceOracle(_complianceOracle);
         owner = msg.sender;
+        // ETH is always allowed even when whitelist is enabled
+        allowedAssets[address(0)] = true;
     }
 
     /// @notice Deposit native tokens into the pool
@@ -188,6 +197,7 @@ contract DustPoolV2 {
         if (msg.value == 0) revert ZeroValue();
         if (msg.value > MAX_DEPOSIT_AMOUNT) revert DepositTooLarge();
         if (commitmentUsed[commitment]) revert DuplicateCommitment();
+        if (whitelistEnabled && !allowedAssets[address(0)]) revert AssetNotAllowed(address(0));
         _screenDepositor(msg.sender);
 
         commitmentUsed[commitment] = true;
@@ -211,6 +221,7 @@ contract DustPoolV2 {
         if (amount == 0) revert ZeroValue();
         if (amount > MAX_DEPOSIT_AMOUNT) revert DepositTooLarge();
         if (commitmentUsed[commitment]) revert DuplicateCommitment();
+        if (whitelistEnabled && !allowedAssets[token]) revert AssetNotAllowed(token);
         _screenDepositor(msg.sender);
 
         // Effects before interactions (CEI pattern)
@@ -237,6 +248,7 @@ contract DustPoolV2 {
         if (len > MAX_BATCH_SIZE) revert BatchTooLarge();
         if (msg.value == 0) revert ZeroValue();
         if (msg.value > MAX_DEPOSIT_AMOUNT) revert DepositTooLarge();
+        if (whitelistEnabled && !allowedAssets[address(0)]) revert AssetNotAllowed(address(0));
         _screenDepositor(msg.sender);
 
         uint256 amountPerCommitment = msg.value / len;
@@ -494,6 +506,21 @@ contract DustPoolV2 {
     function setRelayer(address relayer, bool allowed) external onlyOwner {
         relayers[relayer] = allowed;
         emit RelayerUpdated(relayer, allowed);
+    }
+
+    /// @notice Enable or disable the token whitelist
+    /// @param enabled True to require assets be in allowedAssets mapping
+    function setWhitelistEnabled(bool enabled) external onlyOwner {
+        whitelistEnabled = enabled;
+        emit WhitelistUpdated(enabled);
+    }
+
+    /// @notice Add or remove an asset from the whitelist
+    /// @param asset Token address (address(0) = native ETH)
+    /// @param allowed Whether the asset is allowed for deposits
+    function setAllowedAsset(address asset, bool allowed) external onlyOwner {
+        allowedAssets[asset] = allowed;
+        emit AssetAllowed(asset, allowed);
     }
 
     /// @notice Start ownership transfer (2-step)
