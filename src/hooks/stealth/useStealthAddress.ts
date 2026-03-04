@@ -37,7 +37,7 @@ interface ClaimAddressWithBalance extends DerivedClaimAddress {
 const LABELS = ['Primary', 'Secondary', 'Tertiary'];
 const getLabel = (i: number) => LABELS[i] || `Wallet ${i + 1}`;
 
-export function useStealthAddress() {
+export function useStealthAddress(activeChainId?: number) {
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const [isSigningMessage, setIsSigningMessage] = useState(false);
@@ -99,13 +99,13 @@ export function useStealthAddress() {
 
   const fetchBalance = useCallback(async (addr: string, chainId?: number): Promise<string> => {
     try {
-      const provider = getChainProvider(chainId);
+      const provider = getChainProvider(chainId ?? activeChainId);
       const bal = await provider.getBalance(addr);
       return ethers.utils.formatEther(bal);
     } catch {
       return '0';
     }
-  }, []);
+  }, [activeChainId]);
 
   const generateKeys = useCallback(() => {
     setError(null);

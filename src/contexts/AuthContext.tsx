@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Active chain state — persisted in localStorage (must be declared before hooks that use it)
   const [activeChainId, setActiveChainIdState] = useState(DEFAULT_CHAIN_ID);
 
-  const stealthAddr = useStealthAddress();
+  const stealthAddr = useStealthAddress(activeChainId);
   const nameHook = useStealthName(stealthAddr.metaAddress, activeChainId);
   const pinHook = usePin();
 
