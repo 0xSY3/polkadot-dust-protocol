@@ -38,6 +38,8 @@ AI Agent                     API Server                  Facilitator            
 
 ## Architecture
 
+![x402 Privacy - How Shielded Payments Work](./docs/excalidraw.png)
+
 Three roles, matching the x402 protocol:
 
 | Role | Package | Responsibility |
