@@ -6,38 +6,6 @@ Built on [Dust Protocol](https://dustprotocol.xyz)'s DustPoolV2, a ZK-UTXO priva
 
 ## How It Works
 
-```
-AI Agent                     API Server                  Facilitator            DustPoolV2
-   |                             |                            |                     |
-   |-- GET /api/data ----------->|                            |                     |
-   |<-- 402 {scheme:"shielded"} -|                            |                     |
-   |                             |                            |                     |
-   |  [generate FFLONK proof]    |                            |                     |
-   |                             |                            |                     |
-   |-- GET /api/data ----------->|                            |                     |
-   |   X-PAYMENT: {proof, ...}   |                            |                     |
-   |                             |-- verify(proof) ---------->|                     |
-   |                             |                            |-- isKnownRoot() --->|
-   |                             |                            |-- nullifiers() ---->|
-   |                             |                            |<-- valid -----------|
-   |                             |<-- {isValid: true} --------|                     |
-   |                             |                            |                     |
-   |                             |-- settle(proof) ---------->|                     |
-   |                             |                            |-- withdraw() ------>|
-   |                             |                            |<-- tx receipt ------|
-   |                             |<-- {success, txHash} ------|                     |
-   |<-- 200 {premium data} ------|                            |                     |
-```
-
-1. Agent requests a premium API endpoint. Server returns HTTP 402 with `scheme: "shielded"` in the `accepts` array.
-2. Agent generates an FFLONK ZK proof proving it owns a UTXO in DustPoolV2 -- without revealing which one.
-3. Agent retries the request with the proof in the `X-PAYMENT` header.
-4. Server forwards the proof to the facilitator, which verifies it on-chain (known Merkle root, unspent nullifier, sufficient amount, correct recipient and chain).
-5. Facilitator settles by calling `DustPoolV2.withdraw()` -- funds flow from the pool to the API provider.
-6. Server returns premium content.
-
-## Architecture
-
 ![x402 Privacy - How Shielded Payments Work](./docs/excalidraw.png)
 
 Three roles, matching the x402 protocol:
