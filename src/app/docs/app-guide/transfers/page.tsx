@@ -63,12 +63,12 @@ export default function TransfersPage() {
             <tr className="border-b border-[rgba(255,255,255,0.06)]">
               <td className="py-2.5 pr-4 text-[rgba(255,255,255,0.45)]">Funds destination</td>
               <td className="py-2.5 pr-4">Stay in pool (new V2 note)</td>
-              <td className="py-2.5">Leave pool (ETH on-chain)</td>
+              <td className="py-2.5">Leave pool (PAS on-chain)</td>
             </tr>
             <tr className="border-b border-[rgba(255,255,255,0.06)]">
               <td className="py-2.5 pr-4 text-[rgba(255,255,255,0.45)]">Recipient gets</td>
               <td className="py-2.5 pr-4">Shielded note in their wallet</td>
-              <td className="py-2.5">ETH at a public address</td>
+              <td className="py-2.5">PAS at a public address</td>
             </tr>
             <tr className="border-b border-[rgba(255,255,255,0.06)]">
               <td className="py-2.5 pr-4 text-[rgba(255,255,255,0.45)]">On-chain visibility</td>
@@ -94,8 +94,8 @@ export default function TransfersPage() {
             title: "Enter amount and recipient",
             children: (
               <p>
-                Type the ETH amount and the recipient&apos;s stealth username
-                (e.g. <code>dust.bob</code>) or their V2 owner public key directly.
+                Type the PAS amount and the recipient&apos;s .dust username
+                (e.g. <code>bob.dust</code>) or their V2 owner public key directly.
               </p>
             ),
           },
@@ -113,9 +113,10 @@ export default function TransfersPage() {
             title: "Generate FFLONK proof",
             children: (
               <p>
-                A 2-in-2-out circuit proof is generated locally in the browser,
-                consuming your input note and producing two output commitments:
-                one for the recipient and one for your change.
+                A 2-in-2-out circuit proof is generated locally in the browser (takes
+                30&ndash;60 seconds). On first use, the proving key (~223MB) is downloaded
+                and cached. The proof consumes your input note and produces two output
+                commitments: one for the recipient and one for your change.
               </p>
             ),
           },
@@ -149,7 +150,7 @@ export default function TransfersPage() {
         Recipient Resolution
       </h2>
       <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-3">
-        Stealth usernames (like <code>dust.bob</code>) resolve to public keys
+        Stealth usernames (like <code>bob.dust</code>) resolve to public keys
         through the on-chain ERC-6538 registry. When a user completes
         onboarding, their stealth meta-address is registered &mdash; mapping
         their chosen username to the cryptographic keys needed to receive

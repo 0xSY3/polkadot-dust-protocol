@@ -11,9 +11,9 @@ import {
 import { docsMetadata } from "@/lib/seo/metadata";
 import { techArticleJsonLd } from "@/lib/seo/jsonLd";
 
-const articleLd = techArticleJsonLd("Deposits — Dust Protocol App Guide", "How to deposit ETH or ERC-20 tokens into the DustPoolV2 privacy pool, creating UTXO-style notes with Poseidon commitments.", "/docs/app-guide/deposits");
+const articleLd = techArticleJsonLd("Deposits — Dust Protocol App Guide", "How to deposit PAS or ERC-20 tokens into the DustPoolV2 privacy pool, creating UTXO-style notes with Poseidon commitments.", "/docs/app-guide/deposits");
 
-export const metadata = docsMetadata("Deposits — Dust Protocol App Guide", "How to deposit ETH or ERC-20 tokens into the DustPoolV2 privacy pool, creating UTXO-style notes with Poseidon commitments.", "/docs/app-guide/deposits");
+export const metadata = docsMetadata("Deposits — Dust Protocol App Guide", "How to deposit PAS or ERC-20 tokens into the DustPoolV2 privacy pool, creating UTXO-style notes with Poseidon commitments.", "/docs/app-guide/deposits");
 
 export default function DepositsPage() {
   return (
@@ -37,10 +37,10 @@ export default function DepositsPage() {
           that only you can spend, using a ZK proof.
         </p>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
-          Deposits support <strong className="text-white">arbitrary amounts</strong> of ETH or supported ERC-20 tokens (like USDC).
+          Deposits support <strong className="text-white">arbitrary amounts</strong> of PAS or USDC.
           There are no fixed denominations — you deposit exactly the amount you want. Two deposit modes are available:
-          deposit from your connected (Privy) wallet, or deposit from an external wallet like MetaMask via a generated
-          deposit link or QR code.
+          deposit from your connected wallet, or deposit from an external wallet via a generated
+          deposit link or QR code. On Polkadot Hub Testnet (chain 420420417), the native currency is PAS.
         </p>
       </section>
 
@@ -51,8 +51,8 @@ export default function DepositsPage() {
         <DocsStepList steps={[
           {
             title: "Enter the deposit amount",
-            children: <>Choose ETH or USDC and enter an amount. The modal shows your wallet balance and reserves
-              0.005 ETH for gas when using the MAX button. For USDC deposits, the contract will request an
+            children: <>Choose PAS or USDC and enter an amount. The modal shows your wallet balance and reserves
+              a small amount of PAS for gas when using the MAX button. For USDC deposits, the contract will request an
               ERC-20 approval before the deposit transaction.</>,
           },
           {
@@ -64,9 +64,9 @@ export default function DepositsPage() {
           },
           {
             title: "On-chain transaction",
-            children: <>The deposit calls <code>DustPoolV2.deposit(commitment)</code> with the ETH value attached
-              (or <code>depositERC20(token, amount, commitment)</code> for tokens). The contract stores the
-              commitment and emits a <code>DepositV2</code> event. Your wallet will prompt you to confirm
+            children: <>The deposit calls <code>DustPoolV2.deposit(commitment)</code> with the PAS value attached
+              (or <code>depositERC20(commitment, token, amount)</code> for USDC). The contract stores the
+              commitment and emits a <code>DepositQueued</code> event. Your wallet will prompt you to confirm
               the transaction.</>,
           },
           {
@@ -102,15 +102,15 @@ export default function DepositsPage() {
       <section className="mb-10">
         <h2 className="text-sm font-mono font-semibold text-white tracking-wider mb-3 uppercase">Compliance Screening</h2>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
-          When the deposit modal opens, your wallet address is automatically screened against the
-          <strong className="text-white"> Chainalysis sanctions oracle</strong>. If the address is flagged, deposits are
-          blocked. If the oracle is unavailable, a warning is shown but you may still attempt to deposit — the on-chain
-          contract will enforce the check regardless.
+          Compliance screening is <strong className="text-white">currently disabled</strong> on Polkadot Hub Testnet.
+          The compliance verifier contract is not deployed, so deposits are accepted without sanctions checks.
+          When enabled on mainnet, the deposit modal will screen wallet addresses against sanctions oracles before
+          allowing deposits.
         </p>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
-          After a successful deposit, a <strong className="text-white">1-hour compliance cooldown</strong> begins. During
-          this window, private transfers are restricted — you can only withdraw back to your original deposit address.
-          This gives compliance systems time to flag suspicious activity before funds become fully transferable.
+          The compliance cooldown system (restricting withdrawals to the original depositor address for 1 hour after
+          deposit) is also inactive while the compliance verifier is not deployed. All deposits can be withdrawn
+          or transferred immediately after Merkle tree inclusion.
         </p>
       </section>
 

@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Dust Protocol Documentation — Privacy Protocol for Ethereum";
+export const alt = "Dust Protocol Documentation — Privacy Protocol for Polkadot";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -98,7 +98,7 @@ export default async function Image() {
               marginTop: "8px",
             }}
           >
-            Technical documentation for ERC-5564 stealth addresses, ZK-UTXO privacy pools with Groth16 proofs, and atomic private swaps via Uniswap V4 hooks.
+            Technical documentation for ERC-5564 stealth addresses, ZK-UTXO privacy pools with FFLONK proofs, and atomic private swaps via PrivacyAMM.
           </span>
         </div>
         <div

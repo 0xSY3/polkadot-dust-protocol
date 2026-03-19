@@ -82,23 +82,17 @@ export default function SettingsPage() {
       <section className="mb-10">
         <h2 className="text-sm font-mono font-semibold text-white tracking-wider mb-3 uppercase">Claim Address Configuration</h2>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
-          When claiming stealth payments, Dust supports three wallet deployment strategies:
+          When claiming stealth payments, Dust supports two wallet deployment strategies on Polkadot Hub Testnet:
         </p>
         <SettingsClaimSnippet />
         <ul className="space-y-3 text-sm text-[rgba(255,255,255,0.6)] leading-relaxed list-none pl-0">
           <li>
-            <strong className="text-[#00FF41]">ERC-4337 (Recommended)</strong> — Account Abstraction with DustPaymaster.
-            The paymaster sponsors gas, so you can claim without holding ETH on the stealth address. Best for most users.
+            <strong className="text-[#00FF41]">CREATE2 (Default)</strong> — Deterministic wallet deployment. The stealth address is derived
+            from a CREATE2 salt, allowing the recipient to predict the address before deployment.
           </li>
           <li>
-            <strong className="text-white">CREATE2</strong> — Deterministic wallet deployment. The stealth address is derived
-            from a CREATE2 salt, allowing the recipient to predict the address before deployment. Useful when you need a
-            known address ahead of time.
-          </li>
-          <li>
-            <strong className="text-white">EIP-7702</strong> — Delegation-based claiming. The stealth EOA delegates execution
-            to a smart contract via EIP-7702, enabling batch operations and custom logic without deploying a separate wallet.
-            Newest option — requires chain support.
+            <strong className="text-white">ERC-4337</strong> — Account Abstraction with DustPaymaster.
+            The paymaster sponsors gas, so you can claim without holding PAS on the stealth address.
           </li>
         </ul>
       </section>
@@ -131,8 +125,8 @@ export default function SettingsPage() {
       <div className="mt-6 flex flex-wrap gap-2">
         <DocsBadge variant="amber">AES-256-GCM</DocsBadge>
         <DocsBadge variant="green">View Keys</DocsBadge>
+        <DocsBadge variant="blue">CREATE2</DocsBadge>
         <DocsBadge variant="blue">ERC-4337</DocsBadge>
-        <DocsBadge variant="blue">EIP-7702</DocsBadge>
       </div>
     </DocsPage>
     </>

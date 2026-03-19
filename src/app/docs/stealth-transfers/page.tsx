@@ -8,9 +8,9 @@ import { docsMetadata } from "@/lib/seo/metadata";
 import { techArticleJsonLd } from "@/lib/seo/jsonLd";
 
 /* XSS-safe: all values below are hardcoded string literals; safeJsonLd() escapes < as \u003c */
-const articleLd = techArticleJsonLd("Stealth Transfers — Private Payments with ERC-5564", "Send ETH privately to any .dust name. Each payment lands at a unique one-time stealth address derived via ECDH that only the recipient can detect.", "/docs/stealth-transfers");
+const articleLd = techArticleJsonLd("Stealth Transfers — Private Payments with ERC-5564", "Send PAS privately to any .dust name. Each payment lands at a unique one-time stealth address derived via ECDH that only the recipient can detect.", "/docs/stealth-transfers");
 
-export const metadata = docsMetadata("Stealth Transfers — Private Payments with ERC-5564", "Send ETH privately to any .dust name. Each payment lands at a unique one-time stealth address derived via ECDH that only the recipient can detect.", "/docs/stealth-transfers");
+export const metadata = docsMetadata("Stealth Transfers — Private Payments with ERC-5564", "Send PAS privately to any .dust name. Each payment lands at a unique one-time stealth address derived via ECDH that only the recipient can detect.", "/docs/stealth-transfers");
 
 export default function StealthTransfersPage() {
   return (
@@ -20,7 +20,7 @@ export default function StealthTransfersPage() {
     <DocsPage
       currentHref="/docs/stealth-transfers"
       title="Stealth Transfers"
-      subtitle="Send ETH privately to any .dust name. Each payment lands at a unique one-time address that only the recipient can detect."
+      subtitle="Send PAS privately to any .dust name. Each payment lands at a unique one-time address that only the recipient can detect."
       badge="CORE FEATURE"
     >
 
@@ -74,12 +74,12 @@ export default function StealthTransfersPage() {
           {
             title: "Derive the stealth address",
             children: <><code>stealthAddress = spendKey + hash(sharedSecret) × G</code>. This is a normal
-              Ethereum address. Nothing on-chain identifies it as belonging to any particular person.
+              Polkadot Hub address. Nothing on-chain identifies it as belonging to any particular person.
               The sender computes <code>R = r × G</code> (the ephemeral public key) to publish as a hint.</>,
           },
           {
-            title: "Send ETH + publish announcement",
-            children: <>ETH is transferred directly to <code>stealthAddress</code>. Simultaneously, the sender
+            title: "Send PAS + publish announcement",
+            children: <>PAS is transferred directly to <code>stealthAddress</code>. Simultaneously, the sender
               calls <code>ERC5564Announcer.announce(schemeId, stealthAddress, R, metadata)</code>. This emits
               a public event — it's the broadcast hint that all recipient scanners read.</>,
           },
@@ -90,11 +90,13 @@ export default function StealthTransfersPage() {
               When it does, the payment is detected and shown in Activities.</>,
           },
           {
-            title: "Gasless claim via ERC-4337",
+            title: "Gasless claim via sponsor relay",
             children: <>The recipient clicks Claim. The browser derives the stealth private key
-              <code> (spendKey + hash(sharedSecret))</code> and signs a UserOperation. A DustPaymaster-sponsored
-              relayer submits it — a <code>StealthAccount</code> is deployed at the stealth address and immediately
-              drains its balance to the recipient's chosen claim address. Gas is zero for the recipient.</>,
+              <code> (spendKey + hash(sharedSecret))</code> and signs an EIP-712 message. A sponsor relayer
+              submits it to the <code>StealthWalletFactory</code> — a <code>StealthWallet</code> is deployed at the
+              CREATE2 stealth address and immediately drains its balance to the recipient&apos;s chosen claim address.
+              Gas is paid by the sponsor relayer (0.5% fee), not the recipient. Polkadot Hub does not support
+              ERC-4337, so the protocol uses this signature-relay pattern instead.</>,
           },
         ]} />
       </section>
@@ -162,11 +164,12 @@ export default function StealthTransfersPage() {
         <div className="flex flex-wrap gap-2">
           <DocsBadge variant="green">ERC-5564</DocsBadge>
           <DocsBadge variant="green">ERC-6538</DocsBadge>
-          <DocsBadge variant="amber">ERC-4337</DocsBadge>
+          <DocsBadge variant="amber">Sponsor Relay (EIP-712)</DocsBadge>
           <DocsBadge variant="muted">secp256k1 ECDH</DocsBadge>
           <DocsBadge variant="muted">PBKDF2-SHA512</DocsBadge>
           <DocsBadge variant="green">BN254 (V2)</DocsBadge>
           <DocsBadge variant="muted">Poseidon (V2)</DocsBadge>
+          <DocsBadge variant="muted">pallet-revive</DocsBadge>
         </div>
         <p className="mt-3 text-xs text-[rgba(255,255,255,0.35)] leading-relaxed">
           <Link href="/docs/contracts" className="text-[rgba(0,255,65,0.7)] hover:text-[#00FF41]">View contract addresses →</Link>

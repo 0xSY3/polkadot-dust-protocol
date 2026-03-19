@@ -4,14 +4,14 @@ import { DocsStepList } from "@/components/docs/DocsStepList";
 import { PaymentLinkCard } from "@/components/docs/visuals/PaymentLinkCard";
 import { docsMetadata } from "@/lib/seo/metadata";
 
-export const metadata = docsMetadata("Payment Links — Pay Anyone by .dust Username", "Create shareable payment URLs for your .dust name. Each link tracks analytics while all ETH lands at unique stealth addresses only you can claim.", "/docs/payment-links");
+export const metadata = docsMetadata("Payment Links — Pay Anyone by .dust Username on Polkadot Hub", "Create shareable payment URLs for your .dust name on Polkadot Hub Testnet. Each link tracks analytics while all PAS lands at unique stealth addresses only you can claim.", "/docs/payment-links");
 
 export default function PaymentLinksPage() {
   return (
     <DocsPage
       currentHref="/docs/payment-links"
       title="Payment Links"
-      subtitle="Shareable URLs that receive private payments. Each link tracks its own analytics while all ETH lands at your stealth address."
+      subtitle="Shareable URLs that receive private PAS payments on Polkadot Hub Testnet. Each link tracks its own analytics while all PAS lands at your stealth address."
       badge="CORE FEATURE"
     >
 
@@ -51,7 +51,7 @@ export default function PaymentLinksPage() {
           {
             title: "Share anywhere",
             children: <>Copy the full URL and share it on Twitter, email, invoices.
-              Anyone clicking it can send ETH to your stealth address — they don&apos;t need a Dust account.</>,
+              Anyone clicking it can send PAS to your stealth address — they don&apos;t need a Dust account.</>,
           },
         ]} />
       </section>
@@ -65,9 +65,9 @@ export default function PaymentLinksPage() {
         <ul className="space-y-2">
           {[
             "Your .dust name and description",
-            "An ETH amount field",
+            "A PAS amount field",
             "An optional message (stored in announcement metadata — only you can decrypt it)",
-            "A Send button that generates the stealth address client-side and sends ETH",
+            "A Send button that generates the stealth address client-side and sends PAS",
           ].map((item, i) => (
             <li key={i} className="flex gap-3 text-sm text-[rgba(255,255,255,0.6)]">
               <span className="shrink-0 text-[#00FF41] mt-0.5">—</span>
@@ -78,8 +78,9 @@ export default function PaymentLinksPage() {
       </section>
 
       <DocsCallout type="info" title="Privacy for senders">
-        Senders don&apos;t need a Dust account. The pay page handles all cryptography client-side. The only on-chain
-        record is the ETH transfer and announcement event — neither reveals the sender&apos;s relationship to the recipient.
+        Senders don&apos;t need a Dust account. The pay page handles all cryptography client-side on Polkadot Hub
+        Testnet. The only on-chain record is the PAS transfer and announcement event — neither reveals the
+        sender&apos;s relationship to the recipient. Senders need PAS in their wallet for gas.
       </DocsCallout>
 
       <section className="mt-8">

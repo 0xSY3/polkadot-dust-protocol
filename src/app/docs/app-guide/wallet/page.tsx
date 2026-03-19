@@ -12,7 +12,7 @@ import { docsMetadata } from "@/lib/seo/metadata";
 
 export const metadata = docsMetadata(
   "Wallet — V1 Stealth Address Management",
-  "Send and receive ETH through one-time stealth addresses derived via ECDH. Scan, claim, and manage your V1 stealth payments.",
+  "Send and receive PAS through one-time stealth addresses derived via ECDH. Scan, claim, and manage your V1 stealth payments.",
   "/docs/app-guide/wallet",
 );
 
@@ -34,8 +34,8 @@ export default function WalletGuidePage() {
         </p>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
           These are separate from V2 UTXO notes managed on the Pools page. V1 stealth addresses
-          live on-chain as standard Ethereum addresses, while V2 notes exist as commitments inside
-          the DustPoolV2 contract.
+          live on-chain as standard addresses on Polkadot Hub Testnet, while V2 notes exist as
+          commitments inside the DustPoolV2 contract.
         </p>
         <WalletAddressListSnippet />
       </section>
@@ -78,7 +78,7 @@ export default function WalletGuidePage() {
               children: (
                 <p>
                   The sender publishes the ephemeral public key via an ERC-5564 announcement event
-                  and sends ETH to the stealth address in the same transaction.
+                  and sends PAS to the stealth address in the same transaction.
                 </p>
               ),
             },
@@ -102,7 +102,7 @@ export default function WalletGuidePage() {
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
           Navigate to the Send tab to create a private payment. Enter the recipient&apos;s{" "}
           <code>.dust</code> name (e.g. <code>alice.dust</code>) or their full stealth
-          meta-address (<code>st:thanos:0x...</code>), then specify an amount.
+          meta-address (<code>st:dust:0x...</code>), then specify an amount.
         </p>
         <WalletSendSnippet />
         <ul className="space-y-2">
@@ -110,7 +110,7 @@ export default function WalletGuidePage() {
             "The recipient's meta-address is resolved from the name registry (300ms debounce).",
             "An ephemeral key is generated to compute the one-time stealth address via ECDH.",
             "Preview shows the amount, recipient, and network before confirmation.",
-            "On confirmation, ETH is sent to the stealth address and an ERC-5564 announcement is emitted.",
+            "On confirmation, PAS is sent to the stealth address and an ERC-5564 announcement is emitted.",
           ].map((item, i) => (
             <li key={i} className="flex gap-3 text-sm text-[rgba(255,255,255,0.6)]">
               <span className="shrink-0 text-[#00FF41] mt-0.5">—</span>
@@ -133,7 +133,7 @@ export default function WalletGuidePage() {
           {[
             "The Inbox tab lists all detected payments with balance, block number, and claim status.",
             "Unclaimed payments with sufficient balance show a Claim button to sweep funds to your wallet.",
-            "Claim destination can be changed in the claim address selector (CREATE2, ERC-4337, or EOA).",
+            "Claim destination can be changed in the claim address selector (CREATE2 or ERC-4337).",
             "Dust-amount payments (below gas threshold for EOA claims) are flagged but can still be claimed via sponsored wallet types.",
           ].map((item, i) => (
             <li key={i} className="flex gap-3 text-sm text-[rgba(255,255,255,0.6)]">
@@ -166,7 +166,7 @@ export default function WalletGuidePage() {
                 ["Privacy", "Unlinkable addresses", "Hidden amounts + ZK proofs"],
                 ["Claiming", "Individual claim per address", "Withdraw with FFLONK proof"],
                 ["Fan-in", "Each address claimed separately", "Notes merged in-pool (no fan-in)"],
-                ["Amounts", "Visible on-chain", "Hidden via Pedersen commitments"],
+                ["Amounts", "Visible on-chain", "Hidden via Poseidon commitments"],
                 ["Gas", "One tx per claim", "Batched via relayer"],
               ].map(([label, v1, v2]) => (
                 <tr key={label} className="border-b border-[rgba(255,255,255,0.04)]">

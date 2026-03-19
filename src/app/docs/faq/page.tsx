@@ -9,8 +9,8 @@ const faqs = [
     a: "Dust gives you strong on-chain privacy for payments and swaps, but it is not a silver bullet. Privacy depends on correct usage: using the Privacy Pool with a large anonymity set, waiting the recommended time before withdrawing, and not reusing claim addresses. Network-level metadata (IP address, timing) is outside what Dust can protect.",
   },
   {
-    q: "Do I need ETH to use Dust?",
-    a: "To receive and claim payments: no. Stealth claims are gasless — the DustPaymaster sponsors all claim transactions. To send a payment, you need a small amount of ETH in your regular wallet to cover the send transaction gas (~21,000–50,000 gas).",
+    q: "Do I need PAS to use Dust?",
+    a: "To receive and claim payments: no. Stealth claims are gasless — the sponsor relayer covers all claim transactions via the EIP-712 StealthWallet pattern. To send a payment, you need a small amount of PAS in your regular wallet to cover the send transaction gas. PAS is the native currency of Polkadot Hub Testnet.",
   },
   {
     q: "What does a .dust name cost?",
@@ -26,7 +26,7 @@ const faqs = [
   },
   {
     q: "How long does ZK proof generation take?",
-    a: "DustPool V2 proofs use FFLONK (no trusted setup) and take approximately 2–3 seconds for the standard 2-in-2-out circuit. Split circuit proofs (2-in-8-out for denomination privacy) take 4–5 seconds. DustSwap proofs use Groth16 and take ~1–2 seconds. The proving key files (~50MB) are downloaded once and cached by the browser.",
+    a: "DustPool V2 proofs use FFLONK (no trusted setup) and take approximately 2–3 seconds for the standard 2-in-2-out circuit. Split circuit proofs (2-in-8-out for denomination privacy) take 4–5 seconds. The FFLONK proving keys are larger than Groth16 (~223–283 MB) but require no trusted setup. They are downloaded once and cached via the browser's Cache API for subsequent use.",
   },
   {
     q: "Is the ZK proof generated on my device?",
@@ -41,12 +41,8 @@ const faqs = [
     a: "Yes. The app is fully responsive. ZK proof generation works on mobile browsers (Chrome/Safari on iOS and Android). Proof generation may take 3–5 seconds on lower-end devices due to the WASM computation.",
   },
   {
-    q: "Why are privacy swaps only available on Ethereum Sepolia?",
-    a: "DustSwap requires Uniswap V4, which is currently only deployed on Ethereum Sepolia in our configuration. Thanos Sepolia has stealth transfers and the Privacy Pool. DustSwap support for Thanos will be added when a V4 deployment is available.",
-  },
-  {
     q: "What is ERC-5564?",
-    a: "ERC-5564 is an Ethereum standard that defines the format for announcing stealth address payments on-chain. It specifies how the ephemeral public key and the stealth address are published so any recipient scanner can try to detect payments meant for them.",
+    a: "ERC-5564 is a standard that defines the format for announcing stealth address payments on-chain. It specifies how the ephemeral public key and the stealth address are published so any recipient scanner can try to detect payments meant for them.",
   },
   {
     q: "What is ERC-6538?",
@@ -58,11 +54,11 @@ const faqs = [
   },
   {
     q: "What is the difference between DustPool V1 and V2?",
-    a: "V1 uses a simple mixer model with Groth16 proofs and a fixed commitment structure (Poseidon of nullifier, secret, and amount). V2 uses a ZK-UTXO model with FFLONK proofs (no trusted setup), arbitrary-amount deposits, a 2-in-2-out transaction circuit, and a 2-in-8-out split circuit for denomination privacy. V2 also adds compliance screening (Chainalysis oracle), deposit cooldowns, and encrypted note storage.",
+    a: "V1 used a simple mixer model with Groth16 proofs and fixed commitment structure. V2 uses a ZK-UTXO model with FFLONK proofs (no trusted setup, but larger proving keys ~223–283 MB), arbitrary-amount deposits, a 2-in-2-out transaction circuit, and a 2-in-8-out split circuit for denomination privacy. V2 also adds 1-hour deposit cooldowns and encrypted note storage. The compliance verifier is deployed but disabled for testnet (address(0)).",
   },
   {
     q: "What is FFLONK?",
-    a: "FFLONK is a zero-knowledge proof system that requires no trusted setup ceremony (unlike Groth16). It is 22% cheaper to verify on-chain than Groth16 when there are 8+ public signals. DustPool V2 uses FFLONK for all pool proofs. DustSwap still uses Groth16.",
+    a: "FFLONK is a zero-knowledge proof system that requires no trusted setup ceremony (unlike Groth16). The tradeoff is larger proving keys (~223–283 MB), which are cached via the browser's Cache API after first download. DustPool V2 uses FFLONK for all pool proofs. Private swaps also use FFLONK (reusing the same DustV2Transaction circuit).",
   },
   {
     q: "What is the deposit cooldown?",
@@ -78,11 +74,11 @@ const faqs = [
   },
   {
     q: "What is denomination privacy?",
-    a: "When you withdraw a specific amount (e.g., 7.3 ETH), the amount itself can be used to correlate your deposit and withdrawal. The split circuit breaks withdrawals into common denomination chunks (10, 5, 3, 2, 1, 0.5, etc.) submitted as separate transactions with randomized timing. An observer sees only standard-looking amounts with no obvious pattern linking them to your original deposit.",
+    a: "When you withdraw a specific amount (e.g., 7,300 PAS), the amount itself can be used to correlate your deposit and withdrawal. The split circuit breaks withdrawals into common denomination chunks from the PAS denomination set: 100,000 / 50,000 / 10,000 / 5,000 / 1,000 / 500 / 100 / 50 / 10 / 5 / 1 PAS. Each chunk is submitted as a separate transaction with randomized timing. An observer sees only standard-looking amounts with no obvious pattern linking them to your original deposit.",
   },
   {
     q: "Are deposits screened for sanctions compliance?",
-    a: "Yes. DustPoolV2 integrates with the Chainalysis sanctions oracle. Every deposit checks the depositor's address against the sanctions list. If the address is flagged, the transaction reverts. This prevents sanctioned funds from entering the privacy pool while preserving privacy for legitimate users.",
+    a: "The compliance framework is deployed but currently disabled for testnet — the compliance verifier is set to address(0) in DustPoolV2 on Polkadot Hub Testnet. The 1-hour deposit cooldown is still active. When enabled for mainnet, the compliance oracle will screen depositor addresses against sanctions lists, reverting flagged deposits.",
   },
   {
     q: "What happens if I deposit during a chain reorganization?",
@@ -95,6 +91,18 @@ const faqs = [
   {
     q: "How do I back up my deposit notes?",
     a: "V2 deposit notes are encrypted with AES-256-GCM and stored in your browser's IndexedDB (not plaintext localStorage like V1). Go to Settings to export your notes. Store the exported data in a password manager or encrypted storage. Notes are bearer instruments — anyone with the decrypted note data can generate a withdrawal proof.",
+  },
+  {
+    q: "What is pallet-revive and how does it affect Dust?",
+    a: "pallet-revive is Polkadot Hub's EVM-compatible smart contract engine. It differs from standard EVM in several ways that affect Dust: (1) transaction receipt status reporting has a known bug, so the app verifies on-chain state directly instead of trusting receipt.status, (2) call depth limits are more restrictive, which is why private swaps use a two-transaction pattern instead of an atomic adapter contract, (3) EIP-7702 is not supported, so stealth claims use the EIP-712 sponsor-relay StealthWallet pattern instead of ERC-4337.",
+  },
+  {
+    q: "What tokens are available on Polkadot Hub Testnet?",
+    a: "The native currency is PAS (Paseo). For swaps, PAS is wrapped to WPAS (Wrapped PAS, an ERC-20) for AMM compatibility. MockUSDC is used as a test stablecoin since real USDC is not yet deployed on Polkadot Hub Testnet. The privacy pool accepts PAS deposits. The PAS denomination set for split withdrawals is: 100,000 / 50,000 / 10,000 / 5,000 / 1,000 / 500 / 100 / 50 / 10 / 5 / 1 PAS.",
+  },
+  {
+    q: "Why do private swaps use two transactions instead of one?",
+    a: "pallet-revive on Polkadot Hub has more restrictive call depth limits than standard EVM. The original design used a DustSwapAdapterV2 contract that atomically withdrew, swapped, and re-deposited in a single transaction. This nested call depth exceeds what pallet-revive allows. The two-tx pattern works around this: the relayer first withdraws from DustPoolV2 to its own wallet, then executes the swap via PrivacyAMM and re-deposits the output.",
   },
 ];
 

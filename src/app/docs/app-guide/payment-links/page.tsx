@@ -105,8 +105,8 @@ export default function PaymentLinksPage() {
           {
             title: "Payment sent to a one-time stealth address",
             children: <>The sender&apos;s browser derives a fresh stealth address via ECDH using the recipient&apos;s
-              meta-address. The ETH is sent directly to this new address. The sender never learns the recipient&apos;s
-              actual wallet address.</>,
+              meta-address. PAS is sent directly to this new address on Polkadot Hub Testnet. The sender never
+              learns the recipient&apos;s actual wallet address.</>,
           },
           {
             title: "Announcement posted via ERC-5564",

@@ -10,41 +10,41 @@ import { techArticleJsonLd } from "@/lib/seo/jsonLd";
  * XSS-safe: all values below are hardcoded string literals defined in this file.
  * safeJsonLd() in jsonLd.ts escapes '<' as \u003c. No user input flows into this data.
  */
-const articleLd = techArticleJsonLd("Overview — Privacy Protocol for Ethereum", "Dust Protocol provides stealth addresses (ERC-5564), ZK-UTXO privacy pools with FFLONK proofs, private token swaps, compliance screening, and gasless claims. Non-custodial privacy for Ethereum.", "/docs/overview");
+const articleLd = techArticleJsonLd("Overview — Privacy Protocol for Polkadot", "Dust Protocol provides stealth addresses (ERC-5564), ZK-UTXO privacy pools with FFLONK proofs, private token swaps, compliance screening, and gasless claims. Non-custodial privacy for Polkadot.", "/docs/overview");
 
 const features = [
   {
     badge: "ERC-5564 / ERC-6538",
     title: "Stealth Transfers",
-    desc: "Send ETH to any .dust name. Funds land in a one-time stealth address that only the recipient can detect and claim — completely invisible on-chain.",
+    desc: "Send PAS to any .dust name on Polkadot Hub Testnet. Funds land in a one-time stealth address that only the recipient can detect and claim — completely invisible on-chain.",
     href: "/docs/stealth-transfers",
     color: "green",
   },
   {
     badge: "ZK-UTXO / FFLONK",
     title: "Privacy Pool",
-    desc: "Deposit arbitrary amounts into a global UTXO pool. Withdraw with a FFLONK zero-knowledge proof — no fixed denominations, no on-chain link between deposit and withdrawal. Split withdrawals break amount fingerprinting.",
+    desc: "Deposit arbitrary amounts of PAS into a global UTXO pool. Withdraw with a FFLONK zero-knowledge proof — no on-chain link between deposit and withdrawal. Split withdrawals break amount fingerprinting. Proving keys (~223\u2013283 MB) are cached via the Cache API after first download.",
     href: "/docs/privacy-pool",
     color: "green",
   },
   {
-    badge: "Uniswap V4",
+    badge: "PrivacyAMM",
     title: "Privacy Swaps",
-    desc: "Swap tokens without revealing which deposit you're spending. ZK proof is passed as hookData to a Uniswap V4 hook — verification and swap are atomic.",
+    desc: "Swap PAS and MockUSDC privately via PrivacyAMM. A two-transaction pattern (withdraw then swap) replaces the adapter contract due to pallet-revive call depth limits on Polkadot Hub.",
     href: "/docs/privacy-swaps",
     color: "green",
   },
   {
-    badge: "Chainalysis / View Keys",
+    badge: "View Keys",
     title: "Compliance & Disclosure",
-    desc: "Built-in deposit screening via Chainalysis oracle, 1-hour cooldown periods, and voluntary view keys for selective disclosure. Privacy with accountability.",
+    desc: "1-hour deposit cooldown periods and voluntary view keys for selective disclosure. Compliance verifier is disabled for testnet (verifier = address(0)). Privacy with accountability.",
     href: "/docs/compliance",
     color: "amber",
   },
   {
-    badge: "ERC-4337",
+    badge: "Sponsor Relay",
     title: "Gasless Claims",
-    desc: "Stealth wallets are claimed gas-free. Your stealth key signs a user operation locally; a sponsored paymaster covers the fee so you never expose the key.",
+    desc: "Stealth wallets are claimed gas-free. Your stealth key signs an EIP-712 message locally; a sponsor relayer deploys a StealthWallet via CREATE2 and drains it atomically.",
     href: "/docs/stealth-transfers",
     color: "amber",
   },
@@ -56,15 +56,15 @@ const features = [
     color: "muted",
   },
   {
-    badge: "EIP-7702",
+    badge: "CREATE2",
     title: "Flexible Account Types",
-    desc: "Works with standard EOAs, ERC-4337 smart accounts, CREATE2 wallets, and EOA-as-smart-account via EIP-7702 — no wallet migration required.",
+    desc: "Works with standard EOAs and CREATE2 StealthWallet contracts. EIP-7702 is not yet supported on Polkadot Hub (pallet-revive). No wallet migration required.",
     href: "/docs/eip-7702",
     color: "muted",
   },
 ] as const;
 
-export const metadata = docsMetadata("Overview — Privacy Protocol for Ethereum", "Dust Protocol provides stealth addresses (ERC-5564), ZK-UTXO privacy pools with FFLONK proofs, private token swaps, compliance screening, and gasless claims. Non-custodial privacy for Ethereum.", "/docs/overview");
+export const metadata = docsMetadata("Overview — Privacy Protocol for Polkadot", "Dust Protocol provides stealth addresses (ERC-5564), ZK-UTXO privacy pools with FFLONK proofs, private token swaps, compliance screening, and gasless claims. Non-custodial privacy for Polkadot.", "/docs/overview");
 
 export default function OverviewPage() {
   /* articleLd contains only hardcoded string literals from this file, escaped by safeJsonLd */
@@ -74,16 +74,17 @@ export default function OverviewPage() {
     <DocsPage
       currentHref="/docs/overview"
       title="Dust Protocol"
-      subtitle="Private payments and private swaps for EVM chains. Funds dissolve into the blockchain — no on-chain link between sender and recipient."
+      subtitle="Private payments and private swaps on Polkadot Hub Testnet (chain 420420417). Funds dissolve into the blockchain — no on-chain link between sender and recipient. Native currency is PAS."
       badge="OVERVIEW"
     >
       {/* What it is */}
       <section className="mb-10">
         <h2 className="text-sm font-mono font-semibold text-white tracking-wider mb-3 uppercase">What is Dust?</h2>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-6">
-          Dust Protocol is an on-chain privacy layer built on top of standard EVM infrastructure. It lets users send,
-          receive, and swap tokens without creating a public ledger trail — the fundamental privacy problem that
-          affects every public blockchain today.
+          Dust Protocol is an on-chain privacy layer running exclusively on Polkadot Hub Testnet (chain 420420417).
+          It uses pallet-revive (Polkadot&apos;s EVM-compatible smart contract engine) rather than a standard EVM.
+          It lets users send, receive, and swap PAS and MockUSDC without creating a public ledger trail — the
+          fundamental privacy problem that affects every public blockchain today.
         </p>
 
         <div className="mb-8">
@@ -91,7 +92,7 @@ export default function OverviewPage() {
         </div>
 
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
-          When you receive ETH normally, the entire world can see your address balance, income history, and spending
+          When you receive PAS normally, the entire world can see your address balance, income history, and spending
           patterns. Dust eliminates this by routing all payments through{" "}
           <strong className="text-white">one-time stealth addresses</strong> — each payment lands at a fresh address
           that only the recipient can derive.
@@ -104,8 +105,9 @@ export default function OverviewPage() {
         </p>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mt-4">
           <strong className="text-white">Dust V2</strong> introduces a ZK-UTXO model with arbitrary-amount deposits,
-          FFLONK proofs (no trusted setup), split withdrawals for denomination privacy, and built-in compliance
-          screening — making it possible to prove legitimacy without sacrificing privacy.
+          FFLONK proofs (no trusted setup, but larger proving keys at ~223&ndash;283 MB cached via Cache API after
+          first download), split withdrawals for denomination privacy, and a compliance framework (currently disabled
+          for testnet with verifier = address(0)) — making it possible to prove legitimacy without sacrificing privacy.
         </p>
       </section>
 
@@ -114,20 +116,13 @@ export default function OverviewPage() {
         <h2 className="text-sm font-mono font-semibold text-white tracking-wider mb-3 uppercase">Supported Networks</h2>
         <div className="flex flex-wrap gap-2">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono border border-[rgba(255,255,255,0.08)] rounded-sm text-[rgba(255,255,255,0.5)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FFB000]" />
-            Ethereum Sepolia
-            <span className="text-[rgba(255,255,255,0.25)] ml-1">testnet</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono border border-[rgba(255,255,255,0.08)] rounded-sm text-[rgba(255,255,255,0.5)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00FF41]" />
-            Thanos Sepolia
-            <span className="text-[rgba(255,255,255,0.25)] ml-1">Tokamak Network</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#E6007A]" />
+            Polkadot Hub Testnet (420420417)
           </span>
         </div>
-        <DocsCallout type="warning" title="Testnet Only">
-          Dust Protocol is currently deployed on testnets. Do not send mainnet funds. Contract addresses may change
-          during the testing phase.
-        </DocsCallout>
+        <p className="text-xs text-[rgba(255,255,255,0.4)] mt-2">
+          Uses pallet-revive (not standard EVM). Native currency: PAS. Tokens: MockUSDC (real USDC not yet available), WPAS (wrapped PAS for AMM compatibility).
+        </p>
       </section>
 
       {/* Feature cards */}
@@ -159,7 +154,7 @@ export default function OverviewPage() {
           {[
             "Connect your wallet and complete onboarding (takes ~1 minute).",
             "Register a .dust name — this is your private payment address.",
-            "Share your /pay/yourname link. Anyone can send you ETH without knowing your real address.",
+            "Share your /pay/yourname link. Anyone can send you PAS without knowing your real address.",
             "When payments arrive, claim them gas-free from your Activities page.",
             "Optionally deposit claimed funds to the Privacy Pool to consolidate without creating a traceable link.",
           ].map((step, i) => (

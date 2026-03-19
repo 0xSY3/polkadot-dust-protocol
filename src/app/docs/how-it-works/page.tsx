@@ -11,14 +11,14 @@ const howToData = howToJsonLd(
   "How to Send Private Crypto Payments with Dust Protocol",
   "Complete walkthrough: connect wallet, set PIN, register .dust name, receive stealth payments, claim gas-free, consolidate via privacy pool, and swap tokens anonymously.",
   [
-    { name: "Connect your wallet", text: "Connect with any EVM wallet (MetaMask, WalletConnect, Coinbase Wallet, or Privy social login). The wallet is used only to sign a message." },
+    { name: "Connect your wallet", text: "Connect with any EVM wallet (MetaMask, WalletConnect, or Coinbase Wallet). The wallet is used only to sign a message." },
     { name: "Set a PIN", text: "Choose a numeric PIN. Dust derives your private stealth keys using PBKDF2(wallet_signature + PIN, salt, 100,000 iterations). Neither alone is sufficient." },
     { name: "Register a .dust name", text: "Your stealth meta-address (spendKey + viewKey) is registered on the StealthNameRegistry contract under a name like alice.dust." },
-    { name: "Receive a stealth payment", text: "The sender looks up your .dust name, derives a one-time stealth address via ECDH, and sends ETH directly to it." },
-    { name: "Claim gas-free via ERC-4337", text: "Click Claim. Your stealth key signs a UserOperation locally. The DustPaymaster sponsors gas. A StealthAccount is deployed and drains atomically." },
-    { name: "Consolidate in Privacy Pool V2", text: "Deposit any amount to DustPoolV2 with a Poseidon UTXO commitment. Withdraw with a FFLONK proof to break the on-chain link. Use split withdrawals for denomination privacy." },
-    { name: "Swap tokens privately", text: "Withdraw from DustPoolV2 with a FFLONK proof, swap atomically on a vanilla Uniswap V4 pool via DustSwapAdapterV2, and deposit the output back into DustPoolV2." },
-    { name: "Compliance & disclosure", text: "Deposits are screened via Chainalysis oracle. Generate voluntary disclosure reports using view keys for tax or audit purposes — without revealing spending authority." },
+    { name: "Receive a stealth payment", text: "The sender looks up your .dust name, derives a one-time stealth address via ECDH, and sends PAS directly to it." },
+    { name: "Claim gas-free via sponsor relay", text: "Click Claim. Your stealth key signs an EIP-712 message locally. A sponsor relayer deploys a StealthWallet at the CREATE2 stealth address and drains it atomically." },
+    { name: "Consolidate in Privacy Pool V2", text: "Deposit any amount of PAS to DustPoolV2 with a Poseidon UTXO commitment. Withdraw with a FFLONK proof to break the on-chain link. Use split withdrawals for denomination privacy." },
+    { name: "Swap tokens privately", text: "Withdraw from DustPoolV2 with a FFLONK proof to the relayer wallet, then the relayer swaps via PrivacyAMM and deposits the output back into DustPoolV2. Two separate transactions due to pallet-revive call depth limits." },
+    { name: "Compliance & disclosure", text: "Compliance verifier is disabled for testnet (verifier = address(0)). 1-hour deposit cooldown is active. Generate voluntary disclosure reports using view keys for tax or audit purposes — without revealing spending authority." },
   ],
 );
 
@@ -51,7 +51,7 @@ export default function HowItWorksPage() {
         <DocsStepList steps={[
           {
             title: "Connect your wallet",
-            children: <>Connect with any EVM wallet (MetaMask, WalletConnect, Coinbase Wallet, Privy social login, etc.).
+            children: <>Connect with any EVM wallet (MetaMask, WalletConnect, Coinbase Wallet, etc.).
               The wallet is used only to <strong>sign a message</strong> — not to hold privacy funds directly.</>,
           },
           {
@@ -87,8 +87,8 @@ export default function HowItWorksPage() {
               This address is unique every time — the same sender paying Alice twice produces two completely different addresses.</>,
           },
           {
-            title: "ETH is sent to the stealth address",
-            children: <>The sender broadcasts a normal ETH transfer to <code>stealthAddress</code>.
+            title: "PAS is sent to the stealth address",
+            children: <>The sender broadcasts a normal PAS transfer to <code>stealthAddress</code>.
               Simultaneously, an announcement <code>(ephemeralPubKey R, stealthAddress)</code> is emitted on the
               <code> ERC5564Announcer</code> contract — it's the encrypted hint Alice's scanner uses.</>,
           },
@@ -113,11 +113,11 @@ export default function HowItWorksPage() {
               It never leaves the browser — it is computed in memory and used only to sign.</>,
           },
           {
-            title: "Gasless claim via ERC-4337",
-            children: <>Alice clicks Claim. The stealth key signs a <strong>UserOperation</strong> locally.
-              A sponsored relayer submits it to the <code>EntryPoint</code> contract. The <code>DustPaymaster</code>
-              covers gas. A <code>StealthAccount</code> is deployed at a CREATE2 address and immediately drains
-              its balance to Alice's designated claim address — all in one atomic transaction.</>,
+            title: "Gasless claim via sponsor relay",
+            children: <>Alice clicks Claim. The stealth key signs an <strong>EIP-712 message</strong> locally.
+              A sponsor relayer submits it to the <code>StealthWalletFactory</code> contract, which deploys a
+              <code> StealthWallet</code> at the CREATE2 stealth address and immediately drains its balance to
+              Alice&apos;s designated claim address — all in one atomic transaction. Gas is paid by the sponsor relayer.</>,
           },
         ]} />
       </section>
@@ -135,7 +135,7 @@ export default function HowItWorksPage() {
         <DocsStepList steps={[
           {
             title: "Deposit any amount to DustPoolV2",
-            children: <>Deposit ETH or ERC-20 tokens in <strong>any amount</strong> — no fixed denominations required.
+            children: <>Deposit PAS or ERC-20 tokens in <strong>any amount</strong> — no fixed denominations required.
               Your browser computes a Poseidon commitment <code>C = Poseidon(ownerPubKey, amount, asset, chainId, blinding)</code>
               and a nullifier <code>N = Poseidon(nullifierKey, leafIndex)</code>. The commitment is inserted into a
               relayer-maintained off-chain Merkle tree (depth 20).</>,
@@ -164,10 +164,11 @@ export default function HowItWorksPage() {
         <p className="text-xs text-[rgba(255,255,255,0.35)] font-mono mb-5">Built-in accountability without sacrificing privacy</p>
         <DocsStepList steps={[
           {
-            title: "Deposit screening (Chainalysis Oracle)",
-            children: <>Every deposit is screened against the Chainalysis sanctions oracle. If the depositor's address
-              is flagged, the transaction reverts with <code>DepositBlocked()</code>. This prevents sanctioned funds
-              from entering the privacy pool.</>,
+            title: "Deposit screening (disabled for testnet)",
+            children: <>The compliance verifier is set to <code>address(0)</code> on Polkadot Hub Testnet, meaning
+              deposit screening is currently disabled. The contract supports a Chainalysis-style compliance oracle
+              that can be enabled for mainnet — if the depositor&apos;s address is flagged, the transaction reverts
+              with <code>DepositBlocked()</code>.</>,
           },
           {
             title: "1-hour cooldown period",
@@ -193,21 +194,23 @@ export default function HowItWorksPage() {
           {
             title: "Generate a FFLONK proof for withdrawal",
             children: <>The browser generates a FFLONK proof against your DustPoolV2 UTXO notes — the same
-              2-in-2-out transaction circuit used for regular withdrawals. The proof targets
-              <code> DustSwapAdapterV2</code> as the recipient, binding the withdrawal to the swap adapter contract.</>,
+              2-in-2-out transaction circuit used for regular withdrawals. The proof targets the
+              <strong> relayer wallet</strong> as the recipient (not an adapter contract). This is the two-tx swap
+              pattern required by pallet-revive&apos;s call depth limits on Polkadot Hub.</>,
           },
           {
-            title: "Atomic withdraw-swap-deposit via DustSwapAdapterV2",
-            children: <>The relayer submits the swap to <code>DustSwapAdapterV2</code>, which executes three steps
-              atomically: (1) withdraws from <code>DustPoolV2</code> using your FFLONK proof, (2) swaps on a
-              vanilla Uniswap V4 pool (no custom hook), (3) deposits the output tokens back into
-              <code> DustPoolV2</code> with an on-chain Poseidon commitment. All three steps succeed or revert together.</>,
+            title: "Two-tx swap: withdraw then swap via PrivacyAMM",
+            children: <>The relayer executes the swap in two separate transactions: <strong>(1)</strong> withdraws
+              from <code>DustPoolV2</code> using your FFLONK proof, sending funds to the relayer wallet.
+              <strong> (2)</strong> The relayer swaps on PrivacyAMM (WPAS/MockUSDC pool) and deposits the output
+              tokens back into <code>DustPoolV2</code> with an on-chain Poseidon commitment. The two-tx pattern
+              replaces the adapter contract approach because pallet-revive cannot handle the nested call depth.</>,
           },
           {
             title: "Receive new UTXO notes",
             children: <>After the swap completes, you hold new DustPoolV2 UTXO notes denominated in the output token.
-              The swap leaves no traceable link between input and output — the adapter contract is the only
-              visible on-chain participant. Your new notes can be withdrawn or used in further transfers normally.</>,
+              The swap leaves no traceable link between input and output — the relayer wallet is the only
+              visible on-chain intermediary. Your new notes can be withdrawn or used in further transfers normally.</>,
           },
         ]} />
       </section>
@@ -227,13 +230,11 @@ export default function HowItWorksPage() {
               {[
                 ["ERC-5564", "Stealth address announcement standard"],
                 ["ERC-6538", "Stealth meta-address registry"],
-                ["ERC-4337", "Account abstraction — gasless stealth claims"],
-                ["EIP-7702", "EOA-as-smart-account support"],
-                ["Groth16 / snarkjs", "In-browser ZK proof generation (V1 pool)"],
-                ["FFLONK", "ZK proof system for DustPool V2 — no trusted setup, 22% cheaper than Groth16"],
+                ["Sponsor Relay", "Gasless stealth claims via EIP-712 signed StealthWallet deploy+drain"],
+                ["FFLONK", "ZK proof system for DustPool V2 \u2014 no trusted setup, proving keys ~223\u2013283 MB cached via Cache API"],
                 ["Poseidon hash", "ZK-friendly hash in commitments and Merkle trees"],
-                ["Uniswap V4", "Vanilla liquidity pools for DustSwapAdapterV2 private swaps"],
-                ["Chainalysis Oracle", "On-chain sanctions screening for deposits"],
+                ["PrivacyAMM", "Liquidity pools for private swaps (WPAS/MockUSDC) via two-tx pattern"],
+                ["pallet-revive", "Polkadot Hub\u2019s EVM-compatible contract engine (affects receipt handling and call depth)"],
                 ["View Keys", "Selective disclosure for compliance and auditing"],
               ].map(([std, role]) => (
                 <tr key={std} className="hover:bg-[rgba(255,255,255,0.02)] transition-colors">

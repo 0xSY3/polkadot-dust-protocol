@@ -26,12 +26,12 @@ export default function PoolOverviewAppGuidePage() {
           Dust Protocol operates two distinct pools that together form the privacy infrastructure.{" "}
           <code className="text-xs bg-[rgba(255,255,255,0.06)] px-1.5 rounded-sm">DustPoolV2</code> is the
           ZK-UTXO privacy pool where deposits, withdrawals, and transfers happen. It holds shielded
-          ETH and USDC as encrypted UTXO notes. The second pool is a vanilla Uniswap V4 pool used
-          exclusively for swap liquidity (ETH/USDC).
+          PAS and USDC as encrypted UTXO notes on Polkadot Hub Testnet (chain 420420417). The second
+          pool is a PrivacyAMM pool used exclusively for swap liquidity between WPAS (Wrapped PAS) and USDC.
         </p>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
           The TVL displayed in the sidebar is the combined value of both pools — shielded assets in
-          DustPoolV2 plus the ETH and USDC reserves in the Uniswap V4 pool.
+          DustPoolV2 plus the PAS and USDC reserves in the PrivacyAMM pool.
         </p>
         <PoolTvlSnippet />
       </section>
@@ -41,7 +41,7 @@ export default function PoolOverviewAppGuidePage() {
           Shielded Balances
         </h2>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-3">
-          The &ldquo;Shielded&rdquo; section shows the total ETH and USDC held inside DustPoolV2, read
+          The &ldquo;Shielded&rdquo; section shows the total PAS and USDC held inside DustPoolV2, read
           from the contract&apos;s{" "}
           <code className="text-xs bg-[rgba(255,255,255,0.06)] px-1.5 rounded-sm">totalDeposited(asset)</code>{" "}
           mapping. The progress bar shows the USD-denominated ratio between the two assets.
@@ -59,13 +59,12 @@ export default function PoolOverviewAppGuidePage() {
           Oracle Price
         </h2>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-3">
-          The ETH/USD price comes from two sources, with Chainlink preferred. The Chainlink oracle
-          at{" "}
-          <code className="text-xs bg-[rgba(255,255,255,0.06)] px-1.5 rounded-sm">0x694AA1769357215DE4FAC081bf1f309aDC325306</code>{" "}
-          on Ethereum Sepolia is checked first. If the price is stale (older than 1 hour) or deviates
-          more than 10% from the pool spot price, the app falls back to computing the price from the
-          Uniswap V4 pool&apos;s{" "}
+          The PAS/USD price comes from two sources, with Chainlink preferred when available. If a
+          Chainlink oracle is deployed, it is checked first. If the price is stale (older than 1 hour) or
+          deviates more than 10% from the pool spot price, the app falls back to computing the price from
+          the PrivacyAMM pool&apos;s{" "}
           <code className="text-xs bg-[rgba(255,255,255,0.06)] px-1.5 rounded-sm">sqrtPriceX96</code>.
+          On the current testnet, the pool spot price is the primary source.
         </p>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
           The badge next to the &ldquo;Oracle&rdquo; label indicates which source is active —{" "}
@@ -91,8 +90,8 @@ export default function PoolOverviewAppGuidePage() {
             <tbody className="text-[rgba(255,255,255,0.6)]">
               <tr className="border-b border-[rgba(255,255,255,0.04)]">
                 <td className="py-2 pr-4">Fee tier</td>
-                <td className="py-2 pr-4 text-white">0.05%</td>
-                <td className="py-2">Uniswap V4 swap fee</td>
+                <td className="py-2 pr-4 text-white">0.3%</td>
+                <td className="py-2">PrivacyAMM swap fee (3000 bps)</td>
               </tr>
               <tr className="border-b border-[rgba(255,255,255,0.04)]">
                 <td className="py-2 pr-4">Relayer fee</td>
@@ -135,26 +134,21 @@ export default function PoolOverviewAppGuidePage() {
         <h2 className="text-sm font-mono font-semibold text-white tracking-wider mb-3 uppercase">
           Supported Networks
         </h2>
-        <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-3">
-          <span className="text-white">Ethereum Sepolia</span> — Full feature set: DustPoolV2 (deposits,
-          withdrawals, transfers), Uniswap V4 swap pool, DustSwapAdapterV2, and Chainlink oracle.
-          This is the primary testnet.
-        </p>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
-          <span className="text-white">Thanos Sepolia</span> — Pool operations only (deposits,
-          withdrawals, transfers). No swap pool or oracle. Shown as a dimmed entry in the networks
-          list. Additional L2 deployments are planned.
+          <span className="text-white">Polkadot Hub Testnet</span> (chain 420420417) — Full feature set:
+          DustPoolV2 (deposits, withdrawals, transfers), PrivacyAMM swap pool (WPAS/USDC), and
+          stealth address payments. Native currency is PAS.
         </p>
         <PoolNetworksSnippet />
       </section>
 
       <DocsCallout type="info" title="TVL COMPUTATION">
-        TVL = (shielded ETH &times; oracle price) + shielded USDC + (swap pool ETH reserve &times; oracle
+        TVL = (shielded PAS &times; oracle price) + shielded USDC + (swap pool PAS reserve &times; oracle
         price) + swap pool USDC reserve. All values update every 60 seconds via RPC polling.
       </DocsCallout>
 
       <DocsCallout type="tip" title="POOL COMPOSITION">
-        The vertical bar on the right shows the combined ETH vs USDC composition across both pools.
+        The vertical bar on the right shows the combined PAS vs USDC composition across both pools.
         This helps gauge exposure before swapping — a heavily lopsided pool may have higher price impact.
       </DocsCallout>
 
@@ -162,8 +156,8 @@ export default function PoolOverviewAppGuidePage() {
         <div className="flex flex-wrap gap-2">
           <DocsBadge variant="green">Chainlink</DocsBadge>
           <DocsBadge variant="green">FFLONK</DocsBadge>
-          <DocsBadge variant="green">Uniswap V4</DocsBadge>
-          <DocsBadge variant="muted">Multi-chain</DocsBadge>
+          <DocsBadge variant="green">PrivacyAMM</DocsBadge>
+          <DocsBadge variant="muted">Polkadot Hub</DocsBadge>
         </div>
       </section>
     </DocsPage>

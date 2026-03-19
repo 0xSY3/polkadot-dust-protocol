@@ -114,7 +114,7 @@ export default function OnboardingPage() {
       </ul>
       <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-2">
         The wizard retries ERC-6538 registration up to 3 times with exponential backoff to handle
-        transient RPC failures, especially for Privy embedded wallets.
+        transient RPC failures.
       </p>
 
       {/* Callouts */}
@@ -124,11 +124,11 @@ export default function OnboardingPage() {
         create an entirely new identity.
       </DocsCallout>
 
-      <DocsCallout type="info" title="Privy Embedded Wallets">
-        Privy embedded wallet users get a deterministic address tied to their social login.
-        The same PIN always derives the same keys, even if browser storage is cleared or
-        you log in from a different device. The wizard detects returning users automatically
-        and shows a streamlined re-activation flow.
+      <DocsCallout type="info" title="Wallet Compatibility">
+        Any EVM-compatible wallet (MetaMask, WalletConnect, Coinbase Wallet) works with Dust Protocol
+        on Polkadot Hub Testnet (chain 420420417). The same PIN always derives the same keys, even if
+        browser storage is cleared or you log in from a different device. The wizard detects returning
+        users automatically and shows a streamlined re-activation flow.
       </DocsCallout>
 
       {/* Badges */}

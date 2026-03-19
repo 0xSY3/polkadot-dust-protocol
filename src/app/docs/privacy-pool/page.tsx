@@ -36,11 +36,13 @@ export default function PrivacyPoolPage() {
           transactions from 10 different stealth addresses — and immediately knows those wallets belong to you.
         </p>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
-          <strong className="text-white">DustPool V2</strong> solves this with a ZK-UTXO model. You deposit any amount — ETH or
-          ERC-20 tokens — into a shared pool. Each deposit creates a UTXO-style note with a Poseidon commitment.
-          To withdraw, you generate a <strong>FFLONK proof</strong> (no trusted setup) that proves you own valid notes
-          without revealing which ones. The 2-in-2-out circuit consumes input notes and creates change notes,
-          just like Bitcoin&apos;s UTXO model but with full privacy.
+          <strong className="text-white">DustPool V2</strong> solves this with a ZK-UTXO model on Polkadot Hub Testnet
+          (chain 420420417). You deposit any amount of PAS into a shared pool. Each deposit creates a UTXO-style note
+          with a Poseidon commitment. To withdraw, you generate a <strong>FFLONK proof</strong> (no trusted setup, but
+          larger proving keys at ~223&ndash;283 MB cached via Cache API after first download) that proves you own valid
+          notes without revealing which ones. The 2-in-2-out circuit consumes input notes and creates change notes,
+          just like Bitcoin&apos;s UTXO model but with full privacy. The pool supports up to 2&sup2;&sup0; (~1,048,576)
+          commitments.
         </p>
       </section>
 
@@ -57,9 +59,11 @@ export default function PrivacyPoolPage() {
             title: "Deposit and create a UTXO note",
             children: <>Your browser generates a random blinding factor and computes a Poseidon commitment:
               <code> C = Poseidon(ownerPubKey, amount, asset, chainId, blinding)</code>.
-              Call <code>DustPoolV2.deposit(commitment)</code> or <code>depositERC20(token, amount, commitment)</code>.
-              The commitment is added to the relayer&apos;s off-chain Merkle tree. Your <strong>note</strong> (amount, blinding,
-              asset, commitment) is encrypted with AES-256-GCM and stored in IndexedDB — not plaintext localStorage.</>,
+              Call <code>DustPoolV2.deposit(commitment)</code> with PAS. The commitment is added to the relayer&apos;s
+              off-chain Merkle tree (depth 20, capacity ~1M leaves). Your <strong>note</strong> (amount, blinding,
+              asset, commitment) is encrypted with AES-256-GCM and stored in IndexedDB — not plaintext localStorage.
+              Note: pallet-revive on Polkadot Hub has a receipt status reporting bug, so the app verifies
+              nullifier state on-chain rather than trusting receipt.status.</>,
           },
           {
             title: "Notes accumulate (UTXO model)",
@@ -84,8 +88,9 @@ export default function PrivacyPoolPage() {
           {
             title: "Split withdrawals for denomination privacy (optional)",
             children: <>To prevent amount fingerprinting, use the <strong>2-in-8-out split circuit</strong> (~32,074
-              constraints). The denomination engine automatically breaks your withdrawal into common ETH chunks
-              (10, 5, 3, 2, 1, 0.5, 0.3, etc.). Each chunk is submitted as a separate transaction with randomized
+              constraints). The denomination engine automatically breaks your withdrawal into common PAS chunks
+              from the denomination set: 100,000 / 50,000 / 10,000 / 5,000 / 1,000 / 500 / 100 / 50 / 10 / 5 / 1 PAS.
+              Each chunk is submitted as a separate transaction with randomized
               timing — an observer sees only standard-looking amounts with no pattern.</>,
           },
         ]} />
@@ -109,13 +114,15 @@ export default function PrivacyPoolPage() {
                 ["Transaction circuit", "2-in-2-out, ~12,400 constraints, 9 public signals"],
                 ["Split circuit", "2-in-8-out, ~32,074 constraints, 15 public signals"],
                 ["Merkle tree depth", "20 (2\u00B2\u2070 \u2248 1,048,576 leaves)"],
-                ["Merkle tree location", "Off-chain, relayer-maintained (verified via root history)"],
+                ["Merkle tree location", "Off-chain, relayer-maintained (verified via root history of 100 roots)"],
                 ["Proving environment", "In-browser via snarkjs + WASM"],
+                ["Proving key size", "~223\u2013283 MB (FFLONK), cached via Cache API after first download"],
                 ["Proof generation time", "~2\u20133 seconds (transaction), ~4\u20135 seconds (split)"],
-                ["Gas for verification", "~220,000 gas (FFLONK, 22% cheaper than Groth16)"],
                 ["Double-spend prevention", "Nullifier = Poseidon(nullifierKey, leafIndex), stored on-chain"],
                 ["Commitment structure", "Poseidon(ownerPubKey, amount, asset, chainId, blinding)"],
                 ["Note encryption", "AES-256-GCM via Web Crypto API, key = SHA-256(spendingKey)"],
+                ["PAS denominations", "100K, 50K, 10K, 5K, 1K, 500, 100, 50, 10, 5, 1 PAS"],
+                ["Chain", "Polkadot Hub Testnet (420420417), pallet-revive"],
               ].map(([k, v]) => (
                 <tr key={k} className="hover:bg-[rgba(255,255,255,0.02)] transition-colors">
                   <td className="py-2.5 pr-6 text-[rgba(255,255,255,0.5)]">{k}</td>
@@ -155,9 +162,10 @@ export default function PrivacyPoolPage() {
             they cannot read note data without your stealth keys. Export and back up notes from the Settings page.
           </p>
           <p>
-            <strong className="text-white">Compliance screening is built-in.</strong> The Chainalysis oracle screens
-            every depositor address. A 1-hour cooldown after deposit restricts withdrawals to the original
-            depositor&apos;s address — giving compliance systems time to flag suspicious activity.
+            <strong className="text-white">Compliance framework is present but disabled for testnet.</strong> The
+            compliance verifier is set to address(0) on Polkadot Hub Testnet. A 1-hour cooldown after deposit still
+            restricts withdrawals to the original depositor&apos;s address — giving compliance systems time to flag
+            suspicious activity. The compliance oracle and verifier can be enabled for mainnet.
           </p>
           <p>
             <strong className="text-white">Denomination privacy via split withdrawals.</strong> Instead of fixed
@@ -166,8 +174,7 @@ export default function PrivacyPoolPage() {
           </p>
           <p>
             <strong className="text-white">Chain ID binding prevents cross-chain replay.</strong> Every proof includes
-            the chain ID as a public signal. A proof generated for Ethereum Sepolia cannot be replayed on Thanos
-            Sepolia or any other chain.
+            the chain ID as a public signal. A proof generated on one chain cannot be replayed on any other chain.
           </p>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">

@@ -1,11 +1,11 @@
 import { SITE_URL, SITE_NAME } from "@/lib/seo/metadata";
 
 const docs = [
-  { slug: "overview", title: "Overview — Privacy Protocol for Ethereum", updated: "2026-02-22" },
+  { slug: "overview", title: "Overview — Privacy Protocol for Polkadot", updated: "2026-02-22" },
   { slug: "how-it-works", title: "How Dust Protocol Works — Private Payments End to End", updated: "2026-02-22" },
   { slug: "stealth-transfers", title: "Stealth Transfers — Private Payments with ERC-5564", updated: "2026-02-22" },
   { slug: "privacy-pool", title: "Privacy Pool — ZK Proof Withdrawals", updated: "2026-02-22" },
-  { slug: "privacy-swaps", title: "Privacy Swaps — Anonymous Token Exchange via Uniswap V4", updated: "2026-02-22" },
+  { slug: "privacy-swaps", title: "Privacy Swaps — Anonymous Token Exchange via PrivacyAMM", updated: "2026-02-22" },
   { slug: "key-management", title: "Key Management — Stealth Key Derivation & Security", updated: "2026-02-22" },
   { slug: "payment-links", title: "Payment Links — Pay Anyone by .dust Username", updated: "2026-02-22" },
   { slug: "eip-7702", title: "Account Types & EIP-7702 — Gasless Stealth Claims", updated: "2026-02-22" },
@@ -31,7 +31,7 @@ export async function GET() {
   <channel>
     <title>${SITE_NAME} Documentation</title>
     <link>${SITE_URL}/docs/overview</link>
-    <description>Technical documentation for Dust Protocol — stealth addresses, privacy pools, private swaps, and zero-knowledge proofs on Ethereum.</description>
+    <description>Technical documentation for Dust Protocol — stealth addresses, privacy pools, private swaps, and zero-knowledge proofs on Polkadot.</description>
     <language>en</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${SITE_URL}/docs/feed.xml" rel="self" type="application/rss+xml"/>

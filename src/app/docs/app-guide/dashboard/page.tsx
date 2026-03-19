@@ -28,13 +28,13 @@ export default function DashboardGuidePage() {
         <h2 className="text-sm font-mono font-semibold text-white tracking-wider mb-3 uppercase">Unified Balance</h2>
         <DashboardBalanceSnippet />
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
-          The top card aggregates your total holdings across all sources into a single number. It sums
+          The top card aggregates your total PAS holdings across all sources into a single number. It sums
           two categories:
         </p>
         <ul className="space-y-2 mb-4">
           {[
             ["Stealth", "Unclaimed payments sitting in stealth addresses that only you can detect via ECDH scanning."],
-            ["Claimed", "Payments already claimed to one of your wallets (CREATE2, ERC-4337, or EIP-7702)."],
+            ["Claimed", "Payments already claimed to one of your wallets (CREATE2 or ERC-4337)."],
           ].map(([label, desc]) => (
             <li key={label} className="flex gap-3 text-sm text-[rgba(255,255,255,0.6)]">
               <span className="shrink-0 text-[#00FF41] mt-0.5">—</span>
@@ -53,7 +53,7 @@ export default function DashboardGuidePage() {
         <h2 className="text-sm font-mono font-semibold text-white tracking-wider mb-3 uppercase">Privacy Pool (V2)</h2>
         <DashboardPoolSnippet />
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
-          The V2 pool card shows your shielded balance — ETH stored as ZK-UTXO notes inside the DustPoolV2
+          The V2 pool card shows your shielded balance — PAS stored as ZK-UTXO notes inside the DustPoolV2
           contract. Each note is an encrypted commitment in your browser&apos;s IndexedDB, decryptable only with
           your spending key.
         </p>
@@ -61,7 +61,7 @@ export default function DashboardGuidePage() {
           {[
             ["Balance", "Sum of all unspent notes (decrypted locally from IndexedDB)."],
             ["Note count", "Number of live UTXO notes — e.g. \"4 notes\"."],
-            ["Action buttons", "DEPOSIT adds ETH into the pool, WITHDRAW removes it (auto-split into common denominations for privacy), TRANSFER sends a private in-pool transfer to another user."],
+            ["Action buttons", "DEPOSIT adds PAS into the pool, WITHDRAW removes it (auto-split into common denominations for privacy), TRANSFER sends a private in-pool transfer to another user."],
           ].map(([label, desc]) => (
             <li key={label} className="flex gap-3 text-sm text-[rgba(255,255,255,0.6)]">
               <span className="shrink-0 text-[#00FF41] mt-0.5">—</span>
@@ -71,30 +71,18 @@ export default function DashboardGuidePage() {
         </ul>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
           If your V2 keys are not yet derived (no PIN entered this session), the card shows a PIN prompt.
-          Enter your 6-digit PIN to derive spending and nullifier keys via PBKDF2.
+          Enter your 6-digit PIN to derive spending and nullifier keys via PBKDF2 combined with a wallet signature.
         </p>
       </section>
 
-      {/* Legacy Privacy Pool */}
+      {/* Network Info */}
       <section className="mb-10">
-        <h2 className="text-sm font-mono font-semibold text-white tracking-wider mb-3 uppercase">Legacy Privacy Pool (V1)</h2>
-        <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
-          The V1 pool card manages the original fixed-denomination privacy pool. It includes an auto-routing
-          toggle — when enabled, claimed stealth payments are automatically batched for deposit into the
-          V1 pool. The card shows:
+        <h2 className="text-sm font-mono font-semibold text-white tracking-wider mb-3 uppercase">Network</h2>
+        <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
+          The dashboard operates on <strong className="text-white">Polkadot Hub Testnet</strong> (chain 420420417).
+          All balances are denominated in <strong className="text-white">PAS</strong> (the native currency). The
+          privacy pool also supports USDC deposits and swaps between PAS and USDC via a PrivacyAMM pool.
         </p>
-        <ul className="space-y-2">
-          {[
-            "Current V1 pool balance and deposit count",
-            "WITHDRAW button to consolidate deposits back to your wallet",
-            "DEPOSIT button to batch-deposit eligible stealth payments",
-          ].map((item, i) => (
-            <li key={i} className="flex gap-3 text-sm text-[rgba(255,255,255,0.6)]">
-              <span className="shrink-0 text-[#00FF41] mt-0.5">—</span>
-              {item}
-            </li>
-          ))}
-        </ul>
       </section>
 
       {/* Recent Activity */}
@@ -127,7 +115,7 @@ export default function DashboardGuidePage() {
         <DashboardLinkSnippet />
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
           Displays your <code className="text-xs bg-[rgba(255,255,255,0.06)] px-1.5 rounded-sm">.dust</code> username
-          and payment URL. Share this link with anyone — they can send you ETH without needing a Dust account.
+          and payment URL. Share this link with anyone — they can send you PAS without needing a Dust account.
           The card provides:
         </p>
         <ul className="space-y-2">

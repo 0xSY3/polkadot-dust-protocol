@@ -9,9 +9,9 @@ import { techArticleJsonLd } from "@/lib/seo/jsonLd";
  * XSS-safe: all values below are hardcoded string literals defined in this file.
  * safeJsonLd() in jsonLd.ts escapes '<' as \u003c. No user input flows into this data.
  */
-const articleLd = techArticleJsonLd("Privacy Swaps — Atomic Private Token Exchange via DustSwapAdapterV2", "Swap any amount of tokens privately. DustSwapAdapterV2 withdraws from DustPoolV2, swaps on a vanilla Uniswap V4 pool, and re-deposits the output — all in one atomic transaction via relayer.", "/docs/privacy-swaps");
+const articleLd = techArticleJsonLd("Privacy Swaps — Private Token Exchange via Two-Tx Pattern on Polkadot Hub", "Swap PAS and MockUSDC privately. The relayer withdraws from DustPoolV2 via FFLONK proof, swaps via PrivacyAMM, and re-deposits the output — using a two-transaction pattern required by pallet-revive call depth limits.", "/docs/privacy-swaps");
 
-export const metadata = docsMetadata("Privacy Swaps — Atomic Private Token Exchange via DustSwapAdapterV2", "Swap any amount of tokens privately. DustSwapAdapterV2 withdraws from DustPoolV2, swaps on a vanilla Uniswap V4 pool, and re-deposits the output — all in one atomic transaction via relayer.", "/docs/privacy-swaps");
+export const metadata = docsMetadata("Privacy Swaps — Private Token Exchange via Two-Tx Pattern on Polkadot Hub", "Swap PAS and MockUSDC privately. The relayer withdraws from DustPoolV2 via FFLONK proof, swaps via PrivacyAMM, and re-deposits the output — using a two-transaction pattern required by pallet-revive call depth limits.", "/docs/privacy-swaps");
 
 export default function PrivacySwapsPage() {
   return (
@@ -21,24 +21,25 @@ export default function PrivacySwapsPage() {
     <DocsPage
       currentHref="/docs/privacy-swaps"
       title="Privacy Swaps"
-      subtitle="Swap any amount of tokens privately. The adapter withdraws from DustPoolV2, swaps on a vanilla Uniswap V4 pool, and re-deposits the output as a new UTXO note — all in one atomic transaction."
+      subtitle="Swap PAS and MockUSDC privately on Polkadot Hub Testnet. The relayer withdraws from DustPoolV2 via FFLONK proof, swaps via PrivacyAMM (WPAS/MockUSDC pool), and re-deposits the output as a new UTXO note — using a two-transaction pattern required by pallet-revive call depth limits."
       badge="CORE FEATURE"
     >
 
       <section className="mb-10">
         <h2 className="text-sm font-mono font-semibold text-white tracking-wider mb-3 uppercase">DEX Fingerprinting</h2>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
-          Even after privately receiving ETH through stealth transfers, swapping reveals a pattern. The amount
+          Even after privately receiving PAS through stealth transfers, swapping reveals a pattern. The amount
           you send to a DEX and the timing form a unique fingerprint. An on-chain analyst can cluster
           multiple stealth wallets as belonging to the same user just by watching who swaps similar amounts
           at similar times.
         </p>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
-          Privacy Swaps V2 (<code className="text-xs bg-[rgba(255,255,255,0.06)] px-1.5 rounded-sm">DustSwapAdapterV2</code>)
-          solve this with an <strong>adapter pattern</strong>. The adapter contract atomically withdraws from DustPoolV2
-          (proving UTXO ownership via ZK proof), executes a swap on a standard Uniswap V4 pool with no custom hooks,
-          and re-deposits the swap output back into DustPoolV2 as a new UTXO note. The on-chain record never
-          links a specific depositor to a specific swap output.
+          Privacy Swaps on Polkadot Hub use a <strong>two-transaction pattern</strong> instead of an atomic adapter
+          contract. Due to pallet-revive&apos;s call depth limits, the original single-tx adapter approach doesn&apos;t work.
+          Instead, the relayer first withdraws from DustPoolV2 (proving UTXO ownership via FFLONK proof) to
+          its own wallet, then executes a swap via PrivacyAMM (WPAS/MockUSDC pool) and re-deposits the swap output
+          back into DustPoolV2 as a new UTXO note. The on-chain record never links a specific depositor to a specific
+          swap output. Native PAS must be wrapped to WPAS for AMM compatibility.
         </p>
       </section>
 
@@ -51,30 +52,31 @@ export default function PrivacySwapsPage() {
             children: <>Your browser generates a <strong>FFLONK proof</strong> using the standard DustV2Transaction
               circuit (~12,400 constraints). The proof demonstrates you own valid notes in the pool without revealing
               which ones. Public signals: <code>merkleRoot, null0, null1, outC0, outC1, pubAmount, pubAsset,
-              recipient, chainId</code>. The <code>recipient</code> is set to the adapter contract address, not
-              a user wallet — the adapter receives the withdrawn funds to execute the swap.</>,
+              recipient, chainId</code>. The <code>recipient</code> is set to the <strong>relayer wallet</strong>
+              address — not an adapter contract, because pallet-revive&apos;s call depth limits prevent nested contract
+              calls deep enough for atomic withdraw-swap-deposit.</>,
           },
           {
             title: "Choose swap parameters",
-            children: <>Select the token pair (e.g., ETH to USDC), the amount to swap, and a minimum output amount
-              for slippage protection. Unlike V1&apos;s fixed denominations, you can swap <strong>any arbitrary
-              amount</strong>. The adapter will use a vanilla Uniswap V4 pool — no custom hooks or special pool
-              contracts needed.</>,
+            children: <>Select the token pair (PAS to MockUSDC or MockUSDC to PAS), the amount to swap, and a minimum
+              output amount for slippage protection (default 1% slippage). You can swap <strong>any arbitrary
+              amount</strong>. The swap routes through PrivacyAMM on Polkadot Hub, using the WPAS/MockUSDC pool.
+              Native PAS is automatically wrapped to WPAS before swapping.</>,
           },
           {
             title: "Submit to relayer",
             children: <>The proof and swap parameters are sent to the relayer (same-origin Next.js API at{" "}
               <code>/api/v2/swap</code>). The relayer validates the proof format, verifies the chain ID matches,
-              confirms the proof recipient is the adapter contract, and checks nullifier freshness. It then submits
-              the transaction to <code>DustSwapAdapterV2.executeSwap()</code>.</>,
+              confirms the proof recipient is the relayer wallet, and checks nullifier freshness.</>,
           },
           {
-            title: "Atomic execution: withdraw \u2192 swap \u2192 re-deposit",
-            children: <>The adapter contract performs three operations in a single transaction:
-              <strong> (1)</strong> calls <code>DustPoolV2.withdraw()</code> with the ZK proof to release funds,
-              <strong> (2)</strong> swaps the withdrawn tokens on the vanilla Uniswap V4 pool via the V4 PoolManager,
-              <strong> (3)</strong> computes a Poseidon commitment for the swap output and deposits it back into
-              DustPoolV2. If any step fails, the entire transaction reverts — there is no intermediate state.</>,
+            title: "Two-tx execution: withdraw \u2192 swap + re-deposit",
+            children: <>The relayer executes two separate transactions:
+              <strong> (1)</strong> calls <code>DustPoolV2.withdraw()</code> with the FFLONK proof to release PAS
+              to the relayer wallet. <strong>(2)</strong> The relayer wraps PAS to WPAS (if needed), swaps on
+              PrivacyAMM, computes a Poseidon commitment for the swap output, and deposits it back into
+              DustPoolV2. This two-tx pattern is necessary because pallet-revive cannot handle the nested call depth
+              that the original single-tx adapter approach required.</>,
           },
           {
             title: "Receive new UTXO note",
@@ -91,20 +93,23 @@ export default function PrivacySwapsPage() {
           {`User browser
   \u2514\u2500 generates FFLONK proof \u2500\u2500\u25BA Relayer (/api/v2/swap)
        (9 public signals:            \u2514\u2500 validates proof + chainId
-        merkleRoot, null0,           \u2514\u2500 DustSwapAdapterV2.executeSwap()
-        null1, outC0, outC1,              \u2502
-        pubAmount, pubAsset,              \u251C\u2500 (1) DustPoolV2.withdraw(proof)
-        recipient=adapter,                \u2502     \u2514\u2500 verifies FFLONK proof
-        chainId)                          \u2502     \u2514\u2500 marks nullifiers spent
-                                          \u2502     \u2514\u2500 releases funds to adapter
-                                          \u2502
-                                          \u251C\u2500 (2) Uniswap V4 PoolManager.swap()
-                                          \u2502     \u2514\u2500 vanilla pool (no hooks)
-                                          \u2502     \u2514\u2500 ETH \u2194 USDC at market rate
-                                          \u2502
-                                          \u2514\u2500 (3) DustPoolV2.deposit(newCommitment)
-                                                \u2514\u2500 Poseidon commitment for output
-                                                \u2514\u2500 new UTXO note in pool`}
+        merkleRoot, null0,           \u2514\u2500 verifies recipient = relayer wallet
+        null1, outC0, outC1,
+        pubAmount, pubAsset,         TX 1: DustPoolV2.withdraw(proof)
+        recipient=relayer,                 \u2514\u2500 verifies FFLONK proof
+        chainId)                           \u2514\u2500 marks nullifiers spent
+                                           \u2514\u2500 releases PAS to relayer wallet
+
+                                     TX 2: Swap + re-deposit
+                                           \u251C\u2500 wrap PAS \u2192 WPAS (if native)
+                                           \u251C\u2500 PrivacyAMM.vanillaSwap()
+                                           \u2502     \u2514\u2500 WPAS/MockUSDC pool
+                                           \u2502     \u2514\u2500 market rate swap
+                                           \u2514\u2500 DustPoolV2.deposit(newCommitment)
+                                                 \u2514\u2500 Poseidon commitment for output
+                                                 \u2514\u2500 new UTXO note in pool
+
+  Two-tx pattern required by pallet-revive call depth limit`}
         </div>
       </section>
 
@@ -122,13 +127,14 @@ export default function PrivacySwapsPage() {
             <tbody className="divide-y divide-[rgba(255,255,255,0.04)]">
               {[
                 ["Swap amounts", "Fixed denominations only", "Arbitrary amounts"],
-                ["Pool type", "Custom DustSwapPool contracts", "Vanilla Uniswap V4 pool"],
-                ["Hook", "DustSwapHook (beforeSwap/afterSwap)", "No hooks \u2014 standalone adapter"],
+                ["Pool type", "Custom DustSwapPool contracts", "PrivacyAMM on Polkadot Hub (WPAS/MockUSDC)"],
+                ["Hook", "DustSwapHook (beforeSwap/afterSwap)", "No hooks \u2014 two-tx pattern via relayer"],
                 ["Proof system", "Groth16 (PrivateSwap.circom)", "FFLONK (reuses DustV2Transaction)"],
                 ["Deposit step", "Separate deposit into DustSwapPool", "Uses existing DustPoolV2 notes"],
                 ["Output", "Tokens to stealth address", "New UTXO note in DustPoolV2"],
-                ["Contracts", "DustSwapPool + DustSwapHook + DustSwapRouter", "DustSwapAdapterV2 (single contract)"],
+                ["Execution", "Single tx via adapter contract", "Two txs: withdraw to relayer, then swap+deposit (pallet-revive depth limit)"],
                 ["Wait period", "50-block minimum wait", "None required"],
+                ["Tokens", "ETH/USDC on Ethereum", "PAS/MockUSDC on Polkadot Hub Testnet"],
               ].map(([k, v1, v2]) => (
                 <tr key={k} className="hover:bg-[rgba(255,255,255,0.02)] transition-colors">
                   <td className="py-2.5 pr-6 text-[rgba(255,255,255,0.5)]">{k}</td>
@@ -150,32 +156,32 @@ export default function PrivacySwapsPage() {
               desc: "No fixed denominations. Swap any amount from your DustPoolV2 notes. The UTXO model handles change automatically via the 2-in-2-out circuit.",
             },
             {
-              label: "Atomic three-step execution",
-              desc: "Withdraw, swap, and re-deposit happen in a single transaction. There is no intermediate state where funds are exposed or linkable.",
+              label: "Two-transaction execution",
+              desc: "Withdraw and swap happen in two separate transactions due to pallet-revive call depth limits. The relayer wallet is a trusted intermediary during the swap window.",
             },
             {
-              label: "Vanilla Uniswap V4 pool",
-              desc: "Swaps execute on a standard Uniswap V4 pool with no custom hooks. This means better liquidity, no hook-specific attack surface, and compatibility with any V4 pool.",
+              label: "PrivacyAMM on Polkadot Hub",
+              desc: "Swaps execute via PrivacyAMM using the WPAS/MockUSDC pool. Native PAS is wrapped to WPAS (ERC-20) for AMM compatibility. Real USDC is not yet available on Polkadot Hub Testnet.",
             },
             {
               label: "Reuses DustV2Transaction circuit",
-              desc: "No separate swap-specific circuit. The adapter reuses the same FFLONK proof from DustPoolV2 withdrawals, reducing proving complexity and audit surface.",
+              desc: "No separate swap-specific circuit. The relayer reuses the same FFLONK proof from DustPoolV2 withdrawals, reducing proving complexity and audit surface.",
             },
             {
               label: "Output stays in the pool",
-              desc: "Swap output is re-deposited as a new UTXO note in DustPoolV2. Funds never touch an external address during the swap, maximizing privacy.",
+              desc: "Swap output is re-deposited as a new UTXO note in DustPoolV2 by the relayer.",
             },
             {
               label: "Slippage protection",
-              desc: "The adapter enforces a minimum output amount (minAmountOut). If the Uniswap V4 swap returns less than this threshold, the entire transaction reverts.",
+              desc: "The relayer enforces a minimum output amount (minAmountOut, default 1% slippage). If the PrivacyAMM swap returns less than this threshold, the swap transaction reverts.",
             },
             {
               label: "Chain ID binding",
-              desc: "The chain ID is a public signal in the FFLONK proof. A proof generated on Ethereum Sepolia cannot be replayed on Thanos Sepolia or any other chain.",
+              desc: "The chain ID (420420417) is a public signal in the FFLONK proof. A proof generated on one chain cannot be replayed on any other chain.",
             },
             {
               label: "Relayer-based submission",
-              desc: "A same-origin relayer submits the transaction, paying gas on behalf of the user. The relayer fee is capped at 500 bps and validated before submission.",
+              desc: "A same-origin relayer submits both transactions, paying gas on behalf of the user. The relayer fee is capped at 200 bps (2%) and validated before submission.",
             },
           ].map(({ label, desc }) => (
             <div key={label} className="flex gap-4 p-3 border border-[rgba(255,255,255,0.05)] rounded-sm">
@@ -195,17 +201,18 @@ export default function PrivacySwapsPage() {
       </DocsCallout>
 
       <DocsCallout type="info" title="Gas cost">
-        A privacy swap costs approximately 580,000 to 900,000 gas — covering FFLONK proof verification,
-        the Uniswap V4 swap, Poseidon commitment computation, and the re-deposit into DustPoolV2.
+        A privacy swap costs gas across two separate transactions: the DustPoolV2 withdrawal (~220,000 gas for FFLONK
+        verification) and the swap + re-deposit via PrivacyAMM. Total gas varies but is typically 400,000&ndash;700,000
+        gas across both transactions. The relayer pays gas on behalf of the user.
       </DocsCallout>
 
       <section className="mt-8">
         <div className="flex flex-wrap gap-2">
           <DocsBadge variant="green">FFLONK</DocsBadge>
           <DocsBadge variant="green">DustV2Transaction</DocsBadge>
-          <DocsBadge variant="green">Uniswap V4</DocsBadge>
+          <DocsBadge variant="green">PrivacyAMM</DocsBadge>
           <DocsBadge variant="muted">BN254</DocsBadge>
-          <DocsBadge variant="muted">Adapter Pattern</DocsBadge>
+          <DocsBadge variant="muted">Two-Tx Pattern</DocsBadge>
           <DocsBadge variant="muted">Arbitrary Amounts</DocsBadge>
           <DocsBadge variant="amber">Chain ID Binding</DocsBadge>
           <DocsBadge variant="amber">Slippage Protection</DocsBadge>

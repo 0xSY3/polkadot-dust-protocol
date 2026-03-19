@@ -14,7 +14,7 @@ export default function SwapsAppGuidePage() {
     <DocsPage
       currentHref="/docs/app-guide/swaps"
       title="Privacy Swaps"
-      subtitle="Swap tokens privately through the DustPoolV2 ZK-UTXO pool. The adapter withdraws, swaps on Uniswap V4, and re-deposits the output — all in one atomic transaction."
+      subtitle="Swap tokens privately through the DustPoolV2 ZK-UTXO pool. The relayer withdraws to its wallet, swaps via the PrivacyAMM, and re-deposits the output — using a two-transaction pattern."
       badge="APP GUIDE"
     >
       <section className="mb-10">
@@ -22,11 +22,11 @@ export default function SwapsAppGuidePage() {
           How Privacy Swaps Work
         </h2>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
-          Privacy Swaps execute an atomic three-step flow through{" "}
-          <code className="text-xs bg-[rgba(255,255,255,0.06)] px-1.5 rounded-sm">DustSwapAdapterV2</code>.
-          Your browser generates an FFLONK proof to withdraw from DustPoolV2, the adapter swaps the
-          withdrawn tokens on a vanilla Uniswap V4 pool, then deposits the output back into
-          DustPoolV2 as a new UTXO note. The on-chain record never links your input to the swap output.
+          Privacy Swaps use a <strong className="text-white">two-transaction pattern</strong> executed by the
+          relayer. Your browser generates an FFLONK proof (which takes 30&ndash;60 seconds) to withdraw
+          from DustPoolV2 to the relayer&apos;s wallet. The relayer then wraps PAS to WPAS (Wrapped PAS)
+          if needed, swaps on the PrivacyAMM pool, and deposits the output back into DustPoolV2 as a
+          new UTXO note. The on-chain record never links your input to the swap output.
         </p>
         <SwapFlowDiagramSnippet />
       </section>
@@ -39,29 +39,32 @@ export default function SwapsAppGuidePage() {
         <DocsStepList steps={[
           {
             title: "Select input and output tokens",
-            children: <>Choose the token pair (e.g., ETH to USDC) and enter the amount you want to swap.
+            children: <>Choose the token pair (e.g., PAS to USDC) and enter the amount you want to swap.
               Your shielded pool balance is shown next to the FROM field.</>,
           },
           {
-            title: "Get quote from Uniswap V4",
-            children: <>The app fetches a real-time quote from the Uniswap V4 pool quoter. The estimated
-              output, exchange rate, and minimum received amount (after slippage and relayer fee) are
+            title: "Get quote from PrivacyAMM",
+            children: <>The app fetches a real-time quote from the PrivacyAMM pool. The estimated
+              output, exchange rate, and minimum received amount (after slippage and 2% relayer fee) are
               displayed in the price info panel.</>,
           },
           {
-            title: "Generate FFLONK proof",
-            children: <>Your browser generates a zero-knowledge proof using the DustV2Transaction circuit
-              (~12,400 constraints). The proof demonstrates ownership of valid UTXO notes without
-              revealing which ones. The proof&apos;s <code className="text-xs bg-[rgba(255,255,255,0.06)] px-1.5 rounded-sm">recipient</code> is
-              set to the adapter contract address.</>,
+            title: "Generate FFLONK proof (30–60 seconds)",
+            children: <>Your browser generates a zero-knowledge proof using the DustV2Transaction circuit.
+              On first use, the proving key (~223MB) is downloaded and cached by the browser. The proof
+              demonstrates ownership of valid UTXO notes without revealing which ones. The proof&apos;s{" "}
+              <code className="text-xs bg-[rgba(255,255,255,0.06)] px-1.5 rounded-sm">recipient</code> is
+              set to the relayer&apos;s wallet address.</>,
           },
           {
-            title: "Relayer calls DustSwapAdapterV2",
-            children: <>The proof and swap parameters are sent to the relayer. The adapter atomically
-              <strong> (1)</strong> withdraws from DustPoolV2,{" "}
-              <strong>(2)</strong> swaps on the Uniswap V4 pool,{" "}
-              <strong>(3)</strong> computes a Poseidon commitment and deposits the output back. If any
-              step fails, the entire transaction reverts.</>,
+            title: "Relayer executes the two-tx swap",
+            children: <>The proof and swap parameters are sent to the relayer, which executes the swap
+              in multiple steps:{" "}
+              <strong>(1)</strong> withdraws PAS from DustPoolV2 to the relayer wallet,{" "}
+              <strong>(2)</strong> wraps PAS to WPAS (Wrapped PAS) for AMM compatibility,{" "}
+              <strong>(3)</strong> swaps on the PrivacyAMM pool,{" "}
+              <strong>(4)</strong> computes a Poseidon commitment and deposits the output back into
+              DustPoolV2 as a new note.</>,
           },
           {
             title: "Output deposited as new UTXO note",
@@ -78,10 +81,10 @@ export default function SwapsAppGuidePage() {
         </h2>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-3">
           When enabled (default ON), the denomination privacy engine splits your swap amount into
-          common-sized ETH chunks (e.g., 1, 0.5, 0.3, 0.2, 0.1 ETH). Each chunk is swapped in a
-          separate transaction with random 1-5 second delays between them. This prevents amount
-          correlation — an observer cannot link your swap to a specific deposit by matching the exact
-          amount.
+          standard PAS denomination chunks (100,000 / 50,000 / 10,000 / 5,000 / 1,000 / 500 / 100 /
+          50 / 10 / 5 / 1 PAS). Each chunk is swapped in a separate transaction with random timing
+          delays between them. This prevents amount correlation — an observer cannot link your swap to
+          a specific deposit by matching the exact amount.
         </p>
         <SwapDenomSnippet />
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
@@ -95,9 +98,10 @@ export default function SwapsAppGuidePage() {
           Price &amp; Slippage
         </h2>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-3">
-          The reference price comes from a Chainlink oracle, with the pool spot price as fallback.
-          Slippage tolerance is configurable: 0.1%, 0.5%, 1%, or a custom value up to 50%.
-          If price impact exceeds 50%, the UI shows a red warning — this indicates low pool liquidity.
+          The reference price comes from the PrivacyAMM pool spot price (with Chainlink oracle as
+          an alternative when available). Slippage tolerance is configurable: 0.1%, 0.5%, 1%, or a
+          custom value up to 50%. If price impact exceeds 50%, the UI shows a red warning — this
+          indicates low pool liquidity.
         </p>
         <SwapPriceInfoSnippet />
       </section>
@@ -113,9 +117,9 @@ export default function SwapsAppGuidePage() {
         </p>
       </section>
 
-      <DocsCallout type="warning" title="CHAIN AVAILABILITY">
-        Swaps are only available on Ethereum Sepolia. Other chains support pool operations (deposits,
-        withdrawals, transfers) but not swaps.
+      <DocsCallout type="info" title="CHAIN AVAILABILITY">
+        Swaps are available on Polkadot Hub Testnet (chain 420420417) alongside all pool operations
+        (deposits, withdrawals, transfers). The AMM pool uses WPAS (Wrapped PAS) and USDC as the trading pair.
       </DocsCallout>
 
       <DocsCallout type="tip" title="FEWER CHUNKS = FASTER">
@@ -126,9 +130,9 @@ export default function SwapsAppGuidePage() {
       <section className="mt-8">
         <div className="flex flex-wrap gap-2">
           <DocsBadge variant="green">FFLONK</DocsBadge>
-          <DocsBadge variant="green">Uniswap V4</DocsBadge>
-          <DocsBadge variant="green">Chainlink</DocsBadge>
-          <DocsBadge variant="muted">DustSwapAdapterV2</DocsBadge>
+          <DocsBadge variant="green">PrivacyAMM</DocsBadge>
+          <DocsBadge variant="muted">Two-Tx Swap</DocsBadge>
+          <DocsBadge variant="muted">WPAS</DocsBadge>
         </div>
       </section>
     </DocsPage>

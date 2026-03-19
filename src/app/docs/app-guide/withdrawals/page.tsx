@@ -47,20 +47,21 @@ export default function WithdrawalsPage() {
               Any excess is returned as a new <strong>change note</strong> &mdash; similar to Bitcoin&apos;s UTXO model.</>,
           },
           {
-            title: "Generate FFLONK proof in-browser",
-            children: <>Your browser runs the 2-in-2-out transaction circuit (~12,400 constraints) via snarkjs + WASM.
-              The proof takes roughly 2&ndash;3 seconds to generate. No trusted setup is required.</>,
+            title: "Generate FFLONK proof in-browser (30–60 seconds)",
+            children: <>Your browser runs the 2-in-2-out transaction circuit via snarkjs + WASM. On first use,
+              the proving key (~223MB) is downloaded and cached by the browser. Subsequent proofs skip the
+              download but still take 30&ndash;60 seconds to generate. No trusted setup is required.</>,
           },
           {
             title: "Submit proof to relayer",
             children: <>The proof and public signals are sent to the same-origin relayer at <code>/api/v2/withdraw</code>.
-              The relayer screens the recipient via the Chainalysis sanctions oracle, then submits the proof to
-              <code> DustPoolV2.withdraw()</code> on-chain.</>,
+              The relayer submits the proof to <code>DustPoolV2.withdraw()</code> on-chain. Compliance
+              screening is currently disabled on Polkadot Hub Testnet.</>,
           },
           {
             title: "On-chain verification and transfer",
             children: <>The contract verifies the FFLONK proof, checks nullifier freshness, validates chain ID binding,
-              confirms pool solvency, marks nullifiers as spent, and transfers ETH to the recipient.</>,
+              confirms pool solvency, marks nullifiers as spent, and transfers PAS to the recipient.</>,
           },
         ]} />
       </section>
@@ -103,7 +104,7 @@ export default function WithdrawalsPage() {
               {[
                 ["Constraints", "~12,400"],
                 ["Proof system", "FFLONK (no trusted setup)"],
-                ["Proving time", "~2\u20133 seconds (in-browser)"],
+                ["Proving time", "~30\u201360 seconds (in-browser)"],
                 ["Public signals (9)", "merkleRoot, null0, null1, outC0, outC1, pubAmount, pubAsset, recipient, chainId"],
                 ["Verification gas", "~220,000"],
               ].map(([k, v]) => (
@@ -117,7 +118,7 @@ export default function WithdrawalsPage() {
         </div>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
           The chain ID is included as the 9th public signal to prevent cross-chain proof replay. A proof
-          generated on Ethereum Sepolia cannot be submitted on Thanos Sepolia.
+          generated on one chain cannot be submitted on another.
         </p>
       </section>
 
@@ -128,30 +129,31 @@ export default function WithdrawalsPage() {
         </h2>
         <WithdrawDenomSnippet />
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
-          Withdrawing an unusual amount (e.g. 1.37 ETH) creates a unique fingerprint that can be correlated
+          Withdrawing an unusual amount (e.g. 1,337 PAS) creates a unique fingerprint that can be correlated
           with deposits. The <strong className="text-white">split circuit</strong> (2-in-8-out, ~32,074 constraints,
-          15 public signals) automatically decomposes your withdrawal into common denomination chunks. Each chunk
-          is submitted as a separate transaction with randomized timing delays, making each one indistinguishable
+          15 public signals) automatically decomposes your withdrawal into standard denomination chunks
+          (max 7 chunks per split, with the 8th output reserved for change). Each chunk is submitted as a
+          separate transaction with randomized timing delays, making each one indistinguishable
           from other withdrawals of the same denomination.
         </p>
 
         <p className="text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.45)] font-mono mb-2">
-          ETH Denomination Table
+          PAS Denomination Table
         </p>
         <div className="flex flex-wrap gap-1.5 mb-4">
-          {["10", "5", "3", "2", "1", "0.5", "0.3", "0.2", "0.1", "0.05", "0.03", "0.02", "0.01"].map((d) => (
+          {["100,000", "50,000", "10,000", "5,000", "1,000", "500", "100", "50", "10", "5", "1"].map((d) => (
             <span
               key={d}
               className="px-2 py-0.5 rounded-sm bg-[rgba(0,255,65,0.06)] border border-[rgba(0,255,65,0.12)] text-[10px] font-mono text-[#00FF41]"
             >
-              {d} ETH
+              {d} PAS
             </span>
           ))}
         </div>
 
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
-          For example, withdrawing 1.0 ETH splits into three chunks: 0.5 + 0.3 + 0.2 ETH. The relayer
-          submits each chunk with a random delay between them, so an observer sees three standard-denomination
+          For example, withdrawing 15 PAS splits into two chunks: 10 + 5 PAS. The relayer
+          submits each chunk with a random delay between them, so an observer sees two standard-denomination
           withdrawals with no obvious timing pattern.
         </p>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
@@ -167,18 +169,18 @@ export default function WithdrawalsPage() {
         </h2>
         <WithdrawCooldownSnippet />
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
-          Deposits exceeding <strong className="text-white">$10,000 USD</strong> (the BSA/AML reporting threshold)
-          trigger a 1-hour compliance cooldown. During this period, withdrawal of the affected notes is
-          restricted to the <strong className="text-white">original depositor&apos;s address</strong> only. This gives
-          compliance systems time to screen the deposit via the Chainalysis sanctions oracle.
+          Compliance screening is <strong className="text-white">currently disabled</strong> on Polkadot Hub
+          Testnet. The compliance verifier contract is not deployed, so there is no cooldown period and
+          withdrawals can be sent to any address immediately after Merkle tree inclusion.
         </p>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-4">
-          The UI displays an amber countdown timer when a selected note is in cooldown. You can either wait
-          for the cooldown to expire or set the recipient to the original depositor address to proceed immediately.
+          When enabled on mainnet, deposits exceeding $10,000 USD will trigger a 1-hour cooldown during which
+          withdrawals are restricted to the original depositor&apos;s address, giving compliance systems time
+          to screen the deposit.
         </p>
-        <DocsCallout type="warning" title="Cooldown Enforcement">
-          The cooldown only applies to withdrawals where the USD value meets the $10K threshold (priced via
-          Chainlink ETH/USD oracle). Smaller withdrawals are unaffected regardless of the deposit&apos;s cooldown status.
+        <DocsCallout type="info" title="Testnet Note">
+          On the current testnet deployment, all withdrawals proceed without compliance checks. This behavior
+          will change when the compliance verifier is deployed for mainnet.
         </DocsCallout>
       </section>
 
@@ -206,7 +208,7 @@ export default function WithdrawalsPage() {
         <DocsBadge variant="green">FFLONK</DocsBadge>
         <DocsBadge variant="green">Split Circuit</DocsBadge>
         <DocsBadge variant="green">Denomination Privacy</DocsBadge>
-        <DocsBadge variant="amber">Chainalysis</DocsBadge>
+        <DocsBadge variant="muted">Polkadot Hub</DocsBadge>
       </div>
     </DocsPage>
   );
