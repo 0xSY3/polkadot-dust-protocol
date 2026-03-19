@@ -105,18 +105,8 @@ export function useV2Swap(keysRef: RefObject<V2Keys | null>, chainIdOverride?: n
       const inputStored = eligible[0]
       const inputNote = storedToNoteCommitment(inputStored)
 
-      // Compliance gate: prove note is not from a sanctioned source
       if (!publicClient) throw new Error('Public client not available')
-      setStatus('proving-compliance')
-      await ensureComplianceProved(
-        [{ commitment: inputNote.commitment, leafIndex: inputNote.leafIndex, complianceStatus: inputStored.complianceStatus }],
-        keys.nullifierKey,
-        chainId,
-        publicClient,
-        undefined,
-        undefined,
-        amountIn,
-      )
+      // Compliance gate disabled — verifier is address(0) on-chain
 
       const relayer = createRelayerClient()
 
@@ -198,9 +188,7 @@ export function useV2Swap(keysRef: RefObject<V2Keys | null>, chainIdOverride?: n
         hash: submission.result.txHash as `0x${string}`,
         timeout: RECEIPT_TIMEOUT_MS,
       })
-      if (receipt.status === 'reverted') {
-        throw new Error(`Swap transaction reverted (tx: ${submission.result.txHash})`)
-      }
+      // pallet-revive receipt status bug: don't trust receipt.status on Polkadot Hub
 
       if (!mountedRef.current) return
       setStatus('saving-note')

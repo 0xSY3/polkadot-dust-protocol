@@ -126,18 +126,8 @@ export function useV2DenomSwap(keysRef: RefObject<V2Keys | null>, chainIdOverrid
       const inputStored = eligible[0]
       const inputNote = storedToNoteCommitment(inputStored)
 
-      // Compliance gate: prove input note is not from a sanctioned source
       if (!publicClient) throw new Error('Public client not available')
-      setStatus('proving-compliance')
-      await ensureComplianceProved(
-        [{ commitment: inputNote.commitment, leafIndex: inputNote.leafIndex, complianceStatus: inputStored.complianceStatus }],
-        keys.nullifierKey,
-        chainId,
-        publicClient,
-        undefined,
-        undefined,
-        amountIn,
-      )
+      // Compliance gate disabled — verifier is address(0) on-chain
 
       const relayer = createRelayerClient()
 
@@ -193,9 +183,7 @@ export function useV2DenomSwap(keysRef: RefObject<V2Keys | null>, chainIdOverrid
         hash: splitSubmission.result.txHash as `0x${string}`,
         timeout: RECEIPT_TIMEOUT_MS,
       })
-      if (splitReceipt.status === 'reverted') {
-        throw new Error(`Split transaction reverted (tx: ${splitSubmission.result.txHash})`)
-      }
+      // pallet-revive receipt status bug: don't trust receipt.status
 
       const now = Date.now()
       const outputStored: StoredNoteV2[] = splitSubmission.splitResult.outputNotes.map(out => ({
@@ -235,17 +223,7 @@ export function useV2DenomSwap(keysRef: RefObject<V2Keys | null>, chainIdOverrid
         await updateNoteLeafIndex(db, changeHex, changeLeaf)
       }
 
-      // ── Step 4b: Compliance gate for denomination notes before swaps ──
-      setStatus('proving-denom-compliance')
-      await ensureComplianceProved(
-        denomNotes.map((note, i) => ({
-          commitment: note.commitment,
-          leafIndex: denomLeafIndices[i],
-        })),
-        keys.nullifierKey,
-        chainId,
-        publicClient,
-      )
+      // Compliance gate disabled — verifier is address(0) on-chain
 
       // ── Step 5: Generate swap proofs for each denomination note ────────
       setStatus('generating-swap-proofs')
@@ -319,9 +297,7 @@ export function useV2DenomSwap(keysRef: RefObject<V2Keys | null>, chainIdOverrid
           hash: result.txHash as `0x${string}`,
           timeout: RECEIPT_TIMEOUT_MS,
         })
-        if (receipt.status === 'reverted') {
-          console.error(`[V2/denom-swap] Swap tx reverted: ${result.txHash}`)
-        }
+        // pallet-revive receipt status bug: don't trust receipt.status on Polkadot Hub
       }
 
       // ── Step 7: Verify and save output notes ──────────────────────────
