@@ -1,6 +1,7 @@
 import { fflonk } from 'snarkjs'
 import { parseSplitCalldata } from './split-utils'
 import type { RelayerClient } from './relayer-client'
+import { fetchZkeyWithCache, type DownloadProgress } from './zkey-cache'
 
 export const SPLIT_CIRCUIT_WASM = '/circuits/v2-split/DustV2Split.wasm'
 export const SPLIT_CIRCUIT_ZKEY = process.env.NEXT_PUBLIC_V2_SPLIT_ZKEY_URL || 'https://pub-79a49cd9d00544bdbf2c2dd393b47a1f.r2.dev/v2-split/DustV2Split.zkey?v=2'
@@ -9,12 +10,19 @@ export const LEAF_POLL_ATTEMPTS = 15
 export const LEAF_POLL_DELAY_MS = 2_000
 
 export async function generateSplitProof(
-  circuitInputs: Record<string, string | string[] | string[][]>
+  circuitInputs: Record<string, string | string[] | string[][]>,
+  onProgress?: (stage: string) => void
 ): Promise<{ proof: unknown; publicSignals: string[]; proofCalldata: string }> {
+  onProgress?.('Downloading split proving key...')
+  const zkeyData = await fetchZkeyWithCache(SPLIT_CIRCUIT_ZKEY, (p: DownloadProgress) => {
+    onProgress?.(`Downloading split proving key... ${p.percent}%`)
+  })
+
+  onProgress?.('Generating split proof...')
   const { proof, publicSignals } = await fflonk.fullProve(
     circuitInputs,
     SPLIT_CIRCUIT_WASM,
-    SPLIT_CIRCUIT_ZKEY
+    { type: 'mem', data: zkeyData } as unknown as string,
   )
 
   const calldata = await fflonk.exportSolidityCallData(publicSignals, proof)

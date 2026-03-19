@@ -38,7 +38,7 @@ function dummyMerkleProof(): { pathElements: bigint[]; pathIndices: number[] } {
   }
 }
 
-/** Convert an Ethereum address to bigint (for the recipient public signal) */
+/** Convert an EVM address to bigint (for the recipient public signal) */
 function addressToBigInt(address: string): bigint {
   return BigInt(address)
 }
@@ -112,7 +112,7 @@ export async function buildDepositInputs(
  * - Input 0 is the note being consumed; input 1 is dummy.
  * - Output 0 is the change note (if any); output 1 is dummy.
  * - publicAmount = field-negative withdrawal amount (FIELD_SIZE - amount).
- * - recipient = Ethereum address of the withdrawal target.
+ * - recipient = EVM address of the withdrawal target.
  */
 export async function buildWithdrawInputs(
   inputNote: NoteCommitmentV2,
@@ -416,7 +416,10 @@ export async function buildSplitInputs(
     }
   }
 
-  // Internal split: no value leaves the pool
+  // Internal split: no value leaves the pool.
+  // Use address(1) as dummy recipient to satisfy the contract's ZeroRecipient check.
+  // No funds are transferred when publicAmount=0.
+  const DUMMY_RECIPIENT = 1n
   const inputs: SplitProofInputs = {
     merkleRoot: currentHash,
     nullifier0,
@@ -424,7 +427,7 @@ export async function buildSplitInputs(
     outputCommitments: commitments,
     publicAmount: 0n,
     publicAsset: inputNote.note.asset,
-    recipient: 0n,
+    recipient: DUMMY_RECIPIENT,
     chainId: BigInt(chainId),
 
     inOwner: [inputNote.note.owner, dummy.owner],

@@ -28,6 +28,7 @@ const ERROR_MAP: [pattern: RegExp, message: string][] = [
   [/relayer rejected/i, 'Relayer rejected the transaction. Please try again.'],
   [/amount must be positive/i, 'Amount must be greater than zero'],
   [/amount exceeds maximum/i, 'Amount exceeds the maximum allowed deposit'],
+  [/note was already spent|NullifierAlreadySpent/i, 'This note was already spent. Your balance will refresh.'],
   [/not deployed on chain/i, 'V2 pool is not available on this network'],
   [/public client not available/i, 'Network connection lost. Please refresh and try again.'],
   [/recipient address is sanctioned/i, 'Recipient address is blocked by compliance screening. Try a different address.'],

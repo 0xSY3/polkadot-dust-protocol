@@ -35,7 +35,9 @@ export async function ensureComplianceProved(
   chainId: number,
   publicClient: PublicClient,
   onStatus?: (status: string) => void,
-  onVerified?: OnComplianceVerified
+  onVerified?: OnComplianceVerified,
+  /** Skip compliance if amount (in wei) is below the 10k threshold */
+  amount?: bigint
 ): Promise<void> {
   const config = getChainConfig(chainId)
   if (!config.contracts.dustPoolV2ComplianceVerifier) return

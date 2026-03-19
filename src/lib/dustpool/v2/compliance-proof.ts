@@ -4,9 +4,10 @@
 // main thread without a web worker. Follows the same pattern as proof.ts.
 
 import { fflonk } from 'snarkjs'
+import { fetchZkeyWithCache } from './zkey-cache'
 
 export const COMPLIANCE_WASM_PATH = '/circuits/v2-compliance/DustV2Compliance.wasm'
-export const COMPLIANCE_ZKEY_PATH = '/circuits/v2-compliance/DustV2Compliance.zkey'
+export const COMPLIANCE_ZKEY_PATH = process.env.NEXT_PUBLIC_V2_COMPLIANCE_ZKEY_URL || 'https://pub-79a49cd9d00544bdbf2c2dd393b47a1f.r2.dev/v2-compliance/DustV2Compliance.zkey?v=2'
 export const COMPLIANCE_VKEY_PATH = '/circuits/v2-compliance/verification_key.json'
 
 const SMT_LEVELS = 20
@@ -70,10 +71,12 @@ export async function generateComplianceProof(
 ): Promise<ComplianceProofResult> {
   const circuitInputs = formatCircuitInputs(inputs)
 
+  const zkeyData = await fetchZkeyWithCache(COMPLIANCE_ZKEY_PATH)
+
   const { proof, publicSignals } = await fflonk.fullProve(
     circuitInputs,
     COMPLIANCE_WASM_PATH,
-    COMPLIANCE_ZKEY_PATH
+    { type: 'mem', data: zkeyData } as unknown as string,
   )
 
   // DustV2Compliance has 2 public signals: [exclusionRoot, nullifier]

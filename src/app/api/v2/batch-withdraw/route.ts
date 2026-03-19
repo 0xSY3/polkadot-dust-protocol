@@ -209,7 +209,18 @@ export async function POST(req: Request) {
             },
           )
 
-          const receipt = await tx.wait()
+          let receipt: ethers.providers.TransactionReceipt
+          try {
+            receipt = await tx.wait()
+          } catch (waitErr) {
+            // pallet-revive receipt status bug: verify nullifier state instead
+            const null0Spent = await contract.nullifiers(nullifier0Hex)
+            if (null0Spent) {
+              receipt = await sponsor.provider.getTransactionReceipt(tx.hash)
+            } else {
+              throw waitErr
+            }
+          }
 
           console.log(
             `[V2/batch-withdraw] Chunk ${si + 1}/${shuffled.length} success: tx=${receipt.transactionHash}`,
@@ -219,8 +230,8 @@ export async function POST(req: Request) {
             index: item.originalIndex,
             txHash: receipt.transactionHash,
             blockNumber: receipt.blockNumber,
-            gasUsed: receipt.gasUsed.toString(),
-            fee: receipt.effectiveGasPrice.mul(receipt.gasUsed).toString(),
+            gasUsed: receipt.gasUsed?.toString() ?? '0',
+            fee: receipt.effectiveGasPrice?.mul(receipt.gasUsed ?? 0).toString() ?? '0',
           })
         } catch (chunkErr) {
           const msg = chunkErr instanceof Error ? chunkErr.message : 'Unknown error'

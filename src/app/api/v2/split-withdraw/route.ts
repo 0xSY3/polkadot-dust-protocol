@@ -86,6 +86,25 @@ export async function POST(req: Request) {
         sponsor,
       )
 
+      // Pre-flight: check nullifiers on-chain before wasting gas on a doomed tx
+      const null0Spent = await contract.nullifiers(nullifier0Hex)
+      if (null0Spent) {
+        return NextResponse.json(
+          { error: 'NullifierAlreadySpent' },
+          { status: 400, headers: NO_STORE },
+        )
+      }
+      if (!nullifier1IsZero) {
+        const null1Spent = await contract.nullifiers(nullifier1Hex)
+        if (null1Spent) {
+          return NextResponse.json(
+            { error: 'NullifierAlreadySpent' },
+            { status: 400, headers: NO_STORE },
+          )
+        }
+      }
+
+
       const merkleRoot = toBytes32Hex(BigInt(publicSignals[0]))
       const nullifier0 = nullifier0Hex
       const nullifier1 = nullifier1Hex
@@ -133,12 +152,25 @@ export async function POST(req: Request) {
         },
       )
 
-      const receipt = await tx.wait()
+      let receipt: ethers.providers.TransactionReceipt
+      try {
+        receipt = await tx.wait()
+      } catch (waitErr) {
+        // pallet-revive receipt status bug: tx.wait() throws on status=0
+        // but the tx may have actually succeeded. Verify nullifier state.
+        const null0Spent = await contract.nullifiers(nullifier0)
+        if (null0Spent) {
+          // Tx actually succeeded despite receipt saying reverted
+          receipt = await sponsor.provider.getTransactionReceipt(tx.hash)
+        } else {
+          throw waitErr
+        }
+      }
 
       const chainStr = String(chainId)
       incrementWithdrawal(chainStr, tokenAddress, 'v2_split')
       recordProofVerification(chainStr, 'v2_split', true)
-      observeGasUsed(chainStr, 'split_withdraw', receipt.gasUsed.toNumber())
+      observeGasUsed(chainStr, 'split_withdraw', receipt.gasUsed?.toNumber() ?? 0)
 
       console.log(
         `[V2/split-withdraw] Success: nullifier=${nullifier0.slice(0, 18)}... recipient=${recipient} tx=${receipt.transactionHash}`,

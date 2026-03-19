@@ -15,3 +15,6 @@ export const ZERO_VALUE = 0n
 
 /** USD threshold for compliance cooldown enforcement (BSA/AML reporting standard) */
 export const COMPLIANCE_COOLDOWN_THRESHOLD_USD = 10_000
+
+/** Native token threshold (wei) for compliance proof requirement — 10,000 PAS */
+export const COMPLIANCE_AMOUNT_THRESHOLD = 10_000n * 10n ** 18n

@@ -1,3 +1,18 @@
 [submodule "contracts/dustswap/lib/openzeppelin-contracts"]
 	path = contracts/dustswap/lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "polkadot-hub/lib/openzeppelin-contracts"]
+	path = polkadot-hub/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "contracts/dustpool/lib/forge-std"]
+	path = contracts/dustpool/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "contracts/wallet/lib/forge-std"]
+	path = contracts/wallet/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "contracts/wallet/lib/openzeppelin-contracts"]
+	path = contracts/wallet/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "contracts/wallet/lib/account-abstraction"]
+	path = contracts/wallet/lib/account-abstraction
+	url = https://github.com/eth-infinitism/account-abstraction

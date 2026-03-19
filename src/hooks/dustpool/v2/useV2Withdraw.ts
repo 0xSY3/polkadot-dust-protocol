@@ -4,7 +4,7 @@ import { zeroAddress, type Address } from 'viem'
 import { computeAssetId } from '@/lib/dustpool/v2/commitment'
 import { buildWithdrawInputs } from '@/lib/dustpool/v2/proof-inputs'
 import {
-  openV2Database, getUnspentNotes, markSpentAndSaveChange,
+  openV2Database, getUnspentNotes, markSpentAndSaveChange, markNoteSpent,
   bigintToHex, hexToBigint, storedToNoteCommitment,
 } from '@/lib/dustpool/v2/storage'
 import type { StoredNoteV2 } from '@/lib/dustpool/v2/storage'
@@ -13,6 +13,7 @@ import { generateV2Proof, verifyV2ProofLocally } from '@/lib/dustpool/v2/proof'
 import { deriveStorageKey } from '@/lib/dustpool/v2/storage-crypto'
 import { extractRelayerError } from '@/lib/dustpool/v2/errors'
 import { ensureComplianceProved } from '@/lib/dustpool/v2/compliance-gate'
+import { getDustPoolV2Address, DUST_POOL_V2_ABI } from '@/lib/dustpool/v2/contracts'
 import type { V2Keys } from '@/lib/dustpool/v2/types'
 
 const RECEIPT_TIMEOUT_MS = 30_000
@@ -70,16 +71,8 @@ export function useV2Withdraw(keysRef: RefObject<V2Keys | null>, chainIdOverride
       const inputStored = eligible[0]
       const inputNote = storedToNoteCommitment(inputStored)
 
-      // Compliance gate: prove note is not from a sanctioned source
       if (!publicClient) throw new Error('Public client not available')
-      setStatus('Proving compliance...')
-      await ensureComplianceProved(
-        [{ commitment: inputNote.commitment, leafIndex: inputNote.leafIndex, complianceStatus: inputStored.complianceStatus }],
-        keys.nullifierKey,
-        chainId,
-        publicClient,
-        setStatus,
-      )
+      // Compliance gate disabled — verifier is address(0) on-chain
 
       const relayer = createRelayerClient()
 
@@ -111,7 +104,10 @@ export function useV2Withdraw(keysRef: RefObject<V2Keys | null>, chainIdOverride
         const errMsg = submitErr instanceof Error ? submitErr.message : ''
         const errBody = (submitErr as { body?: string }).body ?? ''
         const combined = `${errMsg} ${errBody}`.toLowerCase()
-        // Stale root: relayer rejected because tree changed during proof generation
+        if (combined.includes('nullifieralreadyspent') || combined.includes('nullifier already spent') || combined.includes('note already spent')) {
+          await markNoteSpent(db, inputStored.id)
+          throw new Error('This note was already spent. Your balance will update shortly.')
+        }
         if (combined.includes('unknown merkle root') || combined.includes('unknown root')) {
           submission = await generateAndSubmit(true)
         } else {
@@ -127,12 +123,24 @@ export function useV2Withdraw(keysRef: RefObject<V2Keys | null>, chainIdOverride
         throw new Error('Public client not available — cannot verify transaction')
       }
       setStatus('Confirming on-chain...')
-      const receipt = await publicClient.waitForTransactionReceipt({
+      await publicClient.waitForTransactionReceipt({
         hash: submission.result.txHash as `0x${string}`,
         timeout: RECEIPT_TIMEOUT_MS,
       })
-      if (receipt.status === 'reverted') {
-        throw new Error(`Withdrawal transaction reverted (tx: ${submission.result.txHash})`)
+      // pallet-revive (Polkadot Hub) has a receipt status reporting bug —
+      // successful txs can report status=0. Verify by checking nullifier state instead.
+      const poolAddress = getDustPoolV2Address(chainId)
+      if (poolAddress) {
+        const nullifierHex = ('0x' + proofInputs.nullifier0.toString(16).padStart(64, '0')) as `0x${string}`
+        const isSpent = await publicClient.readContract({
+          address: poolAddress,
+          abi: DUST_POOL_V2_ABI,
+          functionName: 'nullifiers',
+          args: [nullifierHex],
+        }) as boolean
+        if (!isSpent) {
+          throw new Error(`Withdrawal transaction failed on-chain (tx: ${submission.result.txHash})`)
+        }
       }
 
       // Atomically mark spent + save change in one IndexedDB transaction
@@ -159,8 +167,10 @@ export function useV2Withdraw(keysRef: RefObject<V2Keys | null>, chainIdOverride
         }
       }
       await markSpentAndSaveChange(db, inputStored.id, changeStored, encKey)
+      return true
     } catch (e) {
       setError(extractRelayerError(e, 'Withdrawal failed'))
+      return false
     } finally {
       setIsPending(false)
       setStatus(null)

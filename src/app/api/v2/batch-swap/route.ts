@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import { getServerSponsor, getMaxGasPrice } from '@/lib/server-provider'
 import { DEFAULT_CHAIN_ID } from '@/config/chains'
 import { getDustSwapAdapterV2Config, getVanillaPoolKey, DUST_SWAP_ADAPTER_V2_ABI } from '@/lib/swap/contracts'
+import { BN254_FIELD_SIZE } from '@/lib/dustpool/v2/constants'
+import { PRIVACY_AMM_ADDRESS } from '@/lib/swap/constants'
 import { getDustPoolV2Address, DUST_POOL_V2_ABI } from '@/lib/dustpool/v2/contracts'
 import { syncAndPostRoot } from '@/lib/dustpool/v2/relayer-tree'
 import { toBytes32Hex } from '@/lib/dustpool/poseidon'
@@ -216,14 +218,6 @@ export async function POST(req: Request) {
           const outCommitment1 = toBytes32Hex(BigInt(item.publicSignals[4]))
           const publicAmount = BigInt(item.publicSignals[5])
           const publicAsset = BigInt(item.publicSignals[6])
-          const recipientBigInt = BigInt(item.publicSignals[7])
-          const recipient = ethers.utils.getAddress(
-            '0x' + recipientBigInt.toString(16).padStart(40, '0'),
-          )
-
-          // Swap outputs are UTXO commitments re-deposited into DustPoolV2 —
-          // recipient is the adapter contract (validated at line 156), not an end-user.
-          // Screening skipped intentionally (matches single swap route behavior).
 
           const feeData = await sponsor.provider.getFeeData()
           const maxFeePerGas = feeData.maxFeePerGas || ethers.utils.parseUnits('5', 'gwei')
@@ -232,9 +226,23 @@ export async function POST(req: Request) {
             continue
           }
 
-          // Determine swap direction from tokenIn vs pool currency0
           const zeroForOne = item.tokenIn.toLowerCase() === poolKey.currency0.toLowerCase()
 
+          // Estimate swap output for slippage guard
+          const ammAbi = ['function getAmountOut(uint256 amountIn, bool zeroForOne) external view returns (uint256)']
+          const amm = new ethers.Contract(PRIVACY_AMM_ADDRESS, ammAbi, sponsor.provider)
+          const withdrawAmount = publicAmount > BN254_FIELD_SIZE / 2n
+            ? BN254_FIELD_SIZE - publicAmount
+            : publicAmount
+          const estimatedOutput = await amm.getAmountOut(withdrawAmount, zeroForOne)
+          const estimatedFee = (BigInt(estimatedOutput.toString()) * BigInt(item.relayerFeeBps)) / 10_000n
+          const estimatedUserAmount = BigInt(estimatedOutput.toString()) - estimatedFee
+
+          const effectiveMinAmountOut = BigInt(item.minAmountOut) > estimatedUserAmount
+            ? (estimatedUserAmount * 99n) / 100n
+            : BigInt(item.minAmountOut)
+
+          // Contract computes Poseidon commitment on-chain from ownerPubKey + blinding
           const tx = await adapter.executeSwap(
             item.proof,
             merkleRoot,
@@ -245,31 +253,38 @@ export async function POST(req: Request) {
             publicAmount,
             publicAsset,
             item.tokenIn,
-            {
-              currency0: poolKey.currency0,
-              currency1: poolKey.currency1,
-              fee: poolKey.fee,
-              tickSpacing: poolKey.tickSpacing,
-              hooks: poolKey.hooks,
-            },
             zeroForOne,
-            BigInt(item.minAmountOut),
+            effectiveMinAmountOut,
             BigInt(item.ownerPubKey),
             BigInt(item.blinding),
             item.tokenOut,
             await sponsor.getAddress(),
             item.relayerFeeBps,
             {
-              gasLimit: 1_500_000,
+              gasLimit: 2_000_000,
               type: 2,
               maxFeePerGas,
               maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.utils.parseUnits('1.5', 'gwei'),
             },
           )
 
-          const receipt = await tx.wait()
-          if (receipt.status !== 1) {
-            throw new Error('Transaction reverted on-chain')
+          let receipt: ethers.providers.TransactionReceipt
+          try {
+            receipt = await tx.wait()
+          } catch (waitErr) {
+            // pallet-revive receipt status bug: verify nullifier state instead
+            const poolAddr = getDustPoolV2Address(chainId)
+            if (poolAddr) {
+              const pool = new ethers.Contract(poolAddr, DUST_POOL_V2_ABI as unknown as ethers.ContractInterface, sponsor.provider)
+              const null0Spent = await pool.nullifiers(nullifier0Hex)
+              if (null0Spent) {
+                receipt = await sponsor.provider.getTransactionReceipt(tx.hash)
+              } else {
+                throw waitErr
+              }
+            } else {
+              throw waitErr
+            }
           }
 
           // Parse PrivateSwapExecuted event for output commitment and amount

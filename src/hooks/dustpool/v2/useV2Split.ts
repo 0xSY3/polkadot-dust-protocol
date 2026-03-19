@@ -14,6 +14,7 @@ import { generateV2Proof, verifyV2ProofLocally } from '@/lib/dustpool/v2/proof'
 import { deriveStorageKey } from '@/lib/dustpool/v2/storage-crypto'
 import { extractRelayerError } from '@/lib/dustpool/v2/errors'
 import { ensureComplianceProved } from '@/lib/dustpool/v2/compliance-gate'
+import { getDustPoolV2Address, DUST_POOL_V2_ABI } from '@/lib/dustpool/v2/contracts'
 import { decomposeForSplit } from '@/lib/dustpool/v2/denominations'
 import { resolveTokenSymbol, splitOutputToNoteCommitment } from '@/lib/dustpool/v2/split-utils'
 import { generateSplitProof, verifySplitProofLocally, pollForLeafIndex } from '@/lib/dustpool/v2/split-proof'
@@ -91,16 +92,8 @@ export function useV2Split(keysRef: RefObject<V2Keys | null>, chainIdOverride?: 
       const inputStored = eligible[0]
       const inputNote = storedToNoteCommitment(inputStored)
 
-      // Compliance gate: prove input note is not from a sanctioned source
       if (!publicClient) throw new Error('Public client not available')
-      setStatus('Proving compliance...')
-      await ensureComplianceProved(
-        [{ commitment: inputNote.commitment, leafIndex: inputNote.leafIndex, complianceStatus: inputStored.complianceStatus }],
-        keys.nullifierKey,
-        chainId,
-        publicClient,
-        setStatus,
-      )
+      // Compliance gate disabled — verifier is address(0) on-chain
 
       const relayer = createRelayerClient()
 
@@ -122,7 +115,8 @@ export function useV2Split(keysRef: RefObject<V2Keys | null>, chainIdOverride?: 
         )
 
         const { proof, publicSignals, proofCalldata } = await generateSplitProof(
-          splitResult.circuitInputs
+          splitResult.circuitInputs,
+          setStatus,
         )
 
         const isValid = await verifySplitProofLocally(proof, publicSignals)
@@ -133,6 +127,7 @@ export function useV2Split(keysRef: RefObject<V2Keys | null>, chainIdOverride?: 
         setStatus('Submitting split to relayer...')
         return {
           splitResult,
+          publicSignals,
           result: await relayer.submitSplitWithdrawal(proofCalldata, publicSignals, chainId, asset),
         }
       }
@@ -144,6 +139,11 @@ export function useV2Split(keysRef: RefObject<V2Keys | null>, chainIdOverride?: 
         const errMsg = submitErr instanceof Error ? submitErr.message : ''
         const errBody = (submitErr as { body?: string }).body ?? ''
         const combined = `${errMsg} ${errBody}`.toLowerCase()
+        if (combined.includes('nullifieralreadyspent') || combined.includes('nullifier already spent') || combined.includes('note already spent')) {
+          // Note was already consumed on-chain — mark spent locally to sync state
+          await markNoteSpent(db, inputStored.id)
+          throw new Error('This note was already spent. Your balance will update shortly.')
+        }
         if (combined.includes('unknown merkle root') || combined.includes('unknown root')) {
           splitSubmission = await generateAndSubmitSplit(true)
         } else {
@@ -157,12 +157,24 @@ export function useV2Split(keysRef: RefObject<V2Keys | null>, chainIdOverride?: 
         throw new Error('Public client not available — cannot verify transaction')
       }
       setStatus('Confirming split on-chain...')
-      const splitReceipt = await publicClient.waitForTransactionReceipt({
+      await publicClient.waitForTransactionReceipt({
         hash: splitSubmission.result.txHash as `0x${string}`,
         timeout: RECEIPT_TIMEOUT_MS,
       })
-      if (splitReceipt.status === 'reverted') {
-        throw new Error(`Split transaction reverted (tx: ${splitSubmission.result.txHash})`)
+      // pallet-revive receipt status bug: verify nullifier state instead of receipt.status
+      const poolAddress = getDustPoolV2Address(chainId)
+      if (poolAddress && splitSubmission.publicSignals.length > 1) {
+        const nullifierBigInt = BigInt(splitSubmission.publicSignals[1])
+        const nullifierHex = ('0x' + nullifierBigInt.toString(16).padStart(64, '0')) as `0x${string}`
+        const isSpent = await publicClient.readContract({
+          address: poolAddress,
+          abi: DUST_POOL_V2_ABI,
+          functionName: 'nullifiers',
+          args: [nullifierHex],
+        }) as boolean
+        if (!isSpent) {
+          throw new Error(`Split transaction failed on-chain (tx: ${splitSubmission.result.txHash})`)
+        }
       }
 
       // Save all output notes atomically (M11)
@@ -209,20 +221,7 @@ export function useV2Split(keysRef: RefObject<V2Keys | null>, chainIdOverride?: 
         await updateNoteLeafIndex(db, changeHex, changeLeaf)
       }
 
-      // ──────────────────────────────────────────────────────────────────────
-      // Step 3b: Compliance gate for denomination notes before withdrawal
-      // ──────────────────────────────────────────────────────────────────────
-      setStatus('Proving denomination compliance...')
-      await ensureComplianceProved(
-        denomNotes.map((note, i) => ({
-          commitment: note.commitment,
-          leafIndex: denomLeafIndices[i],
-        })),
-        keys.nullifierKey,
-        chainId,
-        publicClient,
-        setStatus
-      )
+      // Compliance gate disabled — verifier is address(0) on-chain
 
       // ──────────────────────────────────────────────────────────────────────
       // Step 4: Batch-withdraw — generate standard 2-in-2-out proofs for

@@ -14,6 +14,7 @@ export interface WorkerMessage {
     publicSignals?: string[]
     vKey?: unknown
     zkeyPath?: string
+    zkeyData?: Uint8Array
     wasmPath?: string
   }
 }
@@ -38,14 +39,20 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
     if (type === 'generate') {
       sendProgress('Preparing inputs', 0.1)
 
-      const { circuitInputs, zkeyPath, wasmPath } = data
+      const { circuitInputs, zkeyPath, zkeyData, wasmPath } = data
       if (!circuitInputs) throw new Error('Missing circuitInputs')
       if (!wasmPath) throw new Error('Missing wasmPath — main thread must supply absolute URL')
 
       sendProgress('Loading circuit files', 0.2)
       sendProgress('Generating witness + proof', 0.3)
 
-      const result = await fflonk.fullProve(circuitInputs, wasmPath, zkeyPath || FALLBACK_ZKEY_PATH)
+      // Use pre-cached zkey bytes if available, otherwise fall back to URL fetch
+      const zkeySource = zkeyData
+        ? { type: 'mem', data: zkeyData }
+        : (zkeyPath || FALLBACK_ZKEY_PATH)
+
+      // snarkjs accepts { type: 'mem', data: Uint8Array } at runtime despite string typing
+      const result = await fflonk.fullProve(circuitInputs, wasmPath, zkeySource as string)
 
       sendProgress('Formatting calldata', 0.8)
 

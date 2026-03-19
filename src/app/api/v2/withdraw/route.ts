@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     // Verify tokenAddress matches the publicAsset in the ZK proof.
-    // Without this check, an attacker could deposit dust ETH and withdraw a different token.
+    // Without this check, an attacker could deposit dust PAS and withdraw a different token.
     const expectedAsset = await computeAssetId(chainId, tokenAddress)
     const proofAsset = BigInt(publicSignals[6])
     if (expectedAsset !== proofAsset) {
@@ -91,6 +91,15 @@ export async function POST(req: Request) {
         DUST_POOL_V2_ABI as unknown as ethers.ContractInterface,
         sponsor,
       )
+
+      // Pre-flight: check nullifiers on-chain before wasting gas
+      const null0Spent = await contract.nullifiers(nullifier0Hex)
+      if (null0Spent) {
+        return NextResponse.json(
+          { error: 'NullifierAlreadySpent' },
+          { status: 400, headers: NO_STORE },
+        )
+      }
 
       // Convert public signals to contract parameters
       const merkleRoot = toBytes32Hex(BigInt(publicSignals[0]))
@@ -140,12 +149,23 @@ export async function POST(req: Request) {
         },
       )
 
-      const receipt = await tx.wait()
+      let receipt: ethers.providers.TransactionReceipt
+      try {
+        receipt = await tx.wait()
+      } catch (waitErr) {
+        // pallet-revive receipt status bug: verify nullifier state instead
+        const null0Spent = await contract.nullifiers(nullifier0Hex)
+        if (null0Spent) {
+          receipt = await sponsor.provider.getTransactionReceipt(tx.hash)
+        } else {
+          throw waitErr
+        }
+      }
 
       const chainStr = String(chainId)
       incrementWithdrawal(chainStr, tokenAddress, 'v2')
       recordProofVerification(chainStr, 'v2_transaction', true)
-      observeGasUsed(chainStr, 'withdraw', receipt.gasUsed.toNumber())
+      observeGasUsed(chainStr, 'withdraw', receipt.gasUsed?.toNumber() ?? 0)
 
       console.log(
         `[V2/withdraw] Success: nullifier=${nullifier0.slice(0, 18)}... recipient=${recipient} tx=${receipt.transactionHash}`,

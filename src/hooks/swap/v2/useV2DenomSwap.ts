@@ -134,6 +134,9 @@ export function useV2DenomSwap(keysRef: RefObject<V2Keys | null>, chainIdOverrid
         keys.nullifierKey,
         chainId,
         publicClient,
+        undefined,
+        undefined,
+        amountIn,
       )
 
       const relayer = createRelayerClient()
@@ -152,7 +155,7 @@ export function useV2DenomSwap(keysRef: RefObject<V2Keys | null>, chainIdOverrid
         )
 
         const { proof, publicSignals, proofCalldata } = await generateSplitProof(
-          splitResult.circuitInputs
+          splitResult.circuitInputs,
         )
 
         const isValid = await verifySplitProofLocally(proof, publicSignals)

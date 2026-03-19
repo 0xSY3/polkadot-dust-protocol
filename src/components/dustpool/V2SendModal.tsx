@@ -57,6 +57,8 @@ export function V2SendModal({
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [selectedAssetIdx, setSelectedAssetIdx] = useState(0);
+  const [showNoteDetails, setShowNoteDetails] = useState(false);
+  const [showSplitDetails, setShowSplitDetails] = useState(false);
 
   const usdcTokenAddress = useMemo((): Address | null => {
     try {
@@ -90,7 +92,7 @@ export function V2SendModal({
       const bal = balances.get(knownAssetIds.eth) ?? 0n;
       if (bal > 0n) {
         assets.push({
-          symbol: "ETH",
+          symbol: "PAS",
           decimals: 18,
           address: zeroAddress,
           icon: (size: number) => <ETHIcon size={size} />,
@@ -121,9 +123,13 @@ export function V2SendModal({
       setAmount("");
       setRecipient("");
       setSelectedAssetIdx(0);
+      setShowNoteDetails(false);
+      setShowSplitDetails(false);
+      clearError();
+      clearSplitError();
       refreshNotes();
     }
-  }, [isOpen, refreshNotes]);
+  }, [isOpen, refreshNotes, clearError, clearSplitError]);
 
   const handleAssetSelect = (idx: number) => {
     setSelectedAssetIdx(idx);
@@ -217,7 +223,7 @@ export function V2SendModal({
     if (chainlinkPrice != null) {
       return (parseFloat(formatEther(parsedAmount)) * chainlinkPrice) >= COMPLIANCE_COOLDOWN_THRESHOLD_USD;
     }
-    return true;
+    return false;
   }, [parsedAmount, selectedAsset, chainlinkPrice]);
 
   const cooldownBlocksSubmit = cooldownActive && !recipientMatchesOriginator && amountExceedsThreshold;
@@ -230,7 +236,7 @@ export function V2SendModal({
 
   const canSend = parsedAmount !== null && !exceedsBalance && isValidRecipient && !isPending && !isSplitPending && !cooldownBlocksSubmit;
 
-  const tokenSymbol = selectedAsset?.symbol ?? "ETH";
+  const tokenSymbol = selectedAsset?.symbol ?? "PAS";
   const chunks = parsedAmount ? decomposeForToken(parsedAmount, tokenSymbol) : [];
   const formattedChunkValues = chunks.length > 0 ? formatChunks(chunks, tokenSymbol) : [];
   const roundSuggestions = parsedAmount && chunks.length > 1
@@ -246,10 +252,14 @@ export function V2SendModal({
   const handleSend = async () => {
     if (!parsedAmount || !isValidRecipient || !selectedAsset) return;
     const assetAddr = selectedAsset.address;
-    if (useSplitFlow) {
-      await split(parsedAmount, recipient as Address, assetAddr);
-    } else {
-      await withdraw(parsedAmount, recipient as Address, assetAddr);
+    try {
+      if (useSplitFlow) {
+        await split(parsedAmount, recipient as Address, assetAddr);
+      } else {
+        await withdraw(parsedAmount, recipient as Address, assetAddr);
+      }
+    } finally {
+      refreshNotes();
     }
   };
 
@@ -294,7 +304,7 @@ export function V2SendModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            className="relative w-full max-w-[440px] p-6 rounded-md border border-[rgba(255,255,255,0.1)] bg-[#06080F] shadow-2xl overflow-hidden"
+            className="relative w-full max-w-[440px] max-h-[90vh] overflow-y-auto p-6 rounded-md border border-[rgba(255,255,255,0.1)] bg-[#06080F] shadow-2xl"
           >
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
@@ -391,64 +401,85 @@ export function V2SendModal({
                     )}
                   </div>
 
-                  {/* Note consumption preview */}
+                  {/* Note consumption preview (collapsible) */}
                   {consumedNote && parsedAmount && (
-                    <div className="p-3 rounded-sm bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
-                      <p className="text-[9px] text-[rgba(255,255,255,0.5)] uppercase tracking-wider font-mono mb-2">
-                        Note Selection
-                      </p>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[11px] text-[rgba(255,255,255,0.4)] font-mono">Input note</span>
-                        <span className="text-[11px] font-semibold text-white font-mono flex items-center gap-1">
-                          {parseFloat(formatAmount(consumedNote.note.amount)).toFixed(6)} <TokenIcon symbol={tokenSymbol} size={12} /> {tokenSymbol}
+                    <div className="rounded-sm bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
+                      <button
+                        onClick={() => setShowNoteDetails(!showNoteDetails)}
+                        className="w-full flex justify-between items-center p-3 text-left"
+                      >
+                        <span className="text-[9px] text-[rgba(255,255,255,0.5)] uppercase tracking-wider font-mono">
+                          Note Selection
                         </span>
-                      </div>
-                      {changeAmount !== null && changeAmount > 0n && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-[11px] text-[rgba(255,255,255,0.4)] font-mono">Change returned</span>
-                          <span className="text-[11px] font-semibold text-[#00FF41] font-mono flex items-center gap-1">
-                            {parseFloat(formatAmount(changeAmount)).toFixed(6)} <TokenIcon symbol={tokenSymbol} size={12} /> {tokenSymbol}
-                          </span>
+                        <span className="text-[10px] text-[rgba(255,255,255,0.3)] font-mono">
+                          {showNoteDetails ? "▲" : "▼"}
+                        </span>
+                      </button>
+                      {showNoteDetails && (
+                        <div className="px-3 pb-3">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[11px] text-[rgba(255,255,255,0.4)] font-mono">Input note</span>
+                            <span className="text-[11px] font-semibold text-white font-mono flex items-center gap-1">
+                              {parseFloat(formatAmount(consumedNote.note.amount)).toFixed(6)} <TokenIcon symbol={tokenSymbol} size={12} /> {tokenSymbol}
+                            </span>
+                          </div>
+                          {changeAmount !== null && changeAmount > 0n && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-[11px] text-[rgba(255,255,255,0.4)] font-mono">Change returned</span>
+                              <span className="text-[11px] font-semibold text-[#00FF41] font-mono flex items-center gap-1">
+                                {parseFloat(formatAmount(changeAmount)).toFixed(6)} <TokenIcon symbol={tokenSymbol} size={12} /> {tokenSymbol}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Denomination chunk preview */}
+                  {/* Denomination chunk preview (collapsible) */}
                   {parsedAmount && chunks.length > 1 && !exceedsBalance && (
-                    <div className="p-3 rounded-sm bg-[rgba(0,255,65,0.03)] border border-[rgba(0,255,65,0.1)]">
-                      <p className="text-[9px] text-[rgba(255,255,255,0.5)] uppercase tracking-wider font-mono mb-2">
-                        Privacy Split &mdash; {chunks.length} chunks
-                      </p>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {formattedChunkValues.map((val, i) => (
-                          <span
-                            key={i}
-                            className="px-2 py-0.5 rounded-sm bg-[rgba(0,255,65,0.08)] border border-[rgba(0,255,65,0.15)] text-[10px] font-mono text-[#00FF41] inline-flex items-center gap-1"
-                          >
-                            <TokenIcon symbol={tokenSymbol} size={10} />{val} {tokenSymbol}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="text-[10px] text-[rgba(255,255,255,0.35)] font-mono">
-                        Each chunk blends into its denomination anonymity set.
-                      </p>
-                      {roundSuggestions.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-[rgba(255,255,255,0.05)]">
-                          <p className="text-[10px] text-[rgba(255,255,255,0.4)] font-mono mb-1">
-                            Fewer chunks = better privacy:
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {roundSuggestions.map((s, i) => (
-                              <button
+                    <div className="rounded-sm bg-[rgba(0,255,65,0.03)] border border-[rgba(0,255,65,0.1)]">
+                      <button
+                        onClick={() => setShowSplitDetails(!showSplitDetails)}
+                        className="w-full flex justify-between items-center p-3 text-left"
+                      >
+                        <span className="text-[9px] text-[rgba(255,255,255,0.5)] uppercase tracking-wider font-mono">
+                          Privacy Split &mdash; {chunks.length} chunks
+                        </span>
+                        <span className="text-[10px] text-[rgba(255,255,255,0.3)] font-mono">
+                          {showSplitDetails ? "▲" : "▼"}
+                        </span>
+                      </button>
+                      {showSplitDetails && (
+                        <div className="px-3 pb-3">
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {formattedChunkValues.map((val, i) => (
+                              <span
                                 key={i}
-                                onClick={() => setAmount(s.formatted)}
-                                className="px-2 py-0.5 rounded-sm bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.1)] hover:border-[#00FF41] text-[10px] font-mono text-[rgba(255,255,255,0.6)] hover:text-[#00FF41] transition-colors"
+                                className="px-2 py-0.5 rounded-sm bg-[rgba(0,255,65,0.08)] border border-[rgba(0,255,65,0.15)] text-[10px] font-mono text-[#00FF41] inline-flex items-center gap-1"
                               >
-                                {s.formatted} {tokenSymbol} ({s.chunks} chunk{s.chunks !== 1 ? "s" : ""})
-                              </button>
+                                <TokenIcon symbol={tokenSymbol} size={10} />{val} {tokenSymbol}
+                              </span>
                             ))}
                           </div>
+                          {roundSuggestions.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-[rgba(255,255,255,0.05)]">
+                              <p className="text-[10px] text-[rgba(255,255,255,0.4)] font-mono mb-1">
+                                Fewer chunks = better privacy:
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {roundSuggestions.map((s, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => setAmount(s.formatted)}
+                                    className="px-2 py-0.5 rounded-sm bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.1)] hover:border-[#00FF41] text-[10px] font-mono text-[rgba(255,255,255,0.6)] hover:text-[#00FF41] transition-colors"
+                                  >
+                                    {s.formatted} {tokenSymbol} ({s.chunks} chunk{s.chunks !== 1 ? "s" : ""})
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -468,10 +499,10 @@ export function V2SendModal({
                       className="w-full p-3 rounded-sm bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.1)] text-white font-mono text-sm focus:outline-none focus:border-[#00FF41] focus:bg-[rgba(0,255,65,0.02)] transition-all placeholder-[rgba(255,255,255,0.2)]"
                     />
                     {recipient && !isValidRecipient && (
-                      <p className="text-[11px] text-red-400 font-mono">Invalid Ethereum address</p>
+                      <p className="text-[11px] text-red-400 font-mono">Invalid address</p>
                     )}
                     <p className="text-[11px] text-[rgba(255,255,255,0.3)] font-mono">
-                      Any Ethereum address. Sender identity is protected by ZK proof.
+                      Any address. Sender identity is protected by ZK proof.
                     </p>
                   </div>
 
@@ -501,29 +532,6 @@ export function V2SendModal({
                       </div>
                     </div>
                   )}
-
-                  {/* Relayer fee notice */}
-                  <div className="p-2.5 rounded-sm bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.05)]">
-                    <p className="text-[11px] text-[rgba(255,255,255,0.4)] font-mono">
-                      Payment is processed via relayer. A small fee may apply to cover gas.
-                    </p>
-                  </div>
-
-                  {/* Privacy info */}
-                  <div className="p-3 rounded-sm bg-[rgba(124,127,255,0.04)] border border-[rgba(124,127,255,0.1)]">
-                    <div className="flex items-start gap-2">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <ShieldCheckIcon size={14} color="#7c7fff" />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <p className="text-[11px] text-[rgba(255,255,255,0.5)] font-mono leading-relaxed">
-                          Your identity is hidden by a zero-knowledge proof.{" "}
-                          {chunks.length > 1 && ` Amount will be split into ${chunks.length} standard denomination chunks with random timing delays.`}
-                          {chunks.length <= 1 && ` The recipient sees funds arrive but cannot trace the sender.`}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Send button */}
                   <button
@@ -622,12 +630,20 @@ export function V2SendModal({
                     </div>
                   )}
 
-                  <button
-                    onClick={handleClose}
-                    className="w-full py-3 rounded-sm bg-[rgba(0,255,65,0.1)] border border-[rgba(0,255,65,0.2)] hover:bg-[rgba(0,255,65,0.15)] hover:border-[#00FF41] transition-all text-sm font-bold text-[#00FF41] font-mono tracking-wider"
-                  >
-                    Done
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleClose}
+                      className="flex-1 py-3 rounded-sm bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.07)] text-sm font-semibold text-white font-mono transition-all"
+                    >
+                      Done
+                    </button>
+                    <button
+                      onClick={() => { clearError(); clearSplitError(); setAmount(""); setRecipient(""); refreshNotes(); }}
+                      className="flex-1 py-3 rounded-sm bg-[rgba(0,255,65,0.1)] border border-[rgba(0,255,65,0.2)] hover:bg-[rgba(0,255,65,0.15)] hover:border-[#00FF41] text-sm font-bold text-[#00FF41] font-mono tracking-wider transition-all"
+                    >
+                      Send Another
+                    </button>
+                  </div>
                 </div>
               )}
 

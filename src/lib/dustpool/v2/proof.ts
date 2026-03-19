@@ -8,6 +8,7 @@ import { fflonk } from 'snarkjs'
 import type { WorkerResponse } from './proof.worker'
 import type { ProofInputs } from './types'
 import { TREE_DEPTH } from './constants'
+import { fetchZkeyWithCache, type DownloadProgress } from './zkey-cache'
 
 const WASM_PATH = '/circuits/v2/DustV2Transaction.wasm'
 const ZKEY_PATH = process.env.NEXT_PUBLIC_V2_ZKEY_URL || 'https://pub-79a49cd9d00544bdbf2c2dd393b47a1f.r2.dev/v2/DustV2Transaction.zkey?v=2'
@@ -156,10 +157,17 @@ export async function generateV2Proof(
   onProgress?: (stage: string, progress: number) => void
 ): Promise<V2ProofResult> {
   const circuitInputs = formatCircuitInputs(inputs)
+
+  onProgress?.('Downloading proving key...', 0.05)
+  const zkeyData = await fetchZkeyWithCache(ZKEY_PATH, (p: DownloadProgress) => {
+    onProgress?.(`Downloading proving key... ${p.percent}%`, 0.05 + (p.percent / 100) * 0.15)
+  })
+  onProgress?.('Proving key ready', 0.2)
+
   const worker = getProofWorker()
 
   if (!worker) {
-    return generateOnMainThread(circuitInputs, onProgress)
+    return generateOnMainThread(circuitInputs, onProgress, zkeyData)
   }
 
   const id = generateId()
@@ -172,13 +180,12 @@ export async function generateV2Proof(
     worker.postMessage({
       type: 'generate',
       id,
-      data: { circuitInputs, zkeyPath: ZKEY_PATH, wasmPath: absoluteWasmPath },
-    })
+      data: { circuitInputs, zkeyData, wasmPath: absoluteWasmPath },
+    }, [zkeyData.buffer])
 
     setTimeout(() => {
       if (workerPromises.has(id)) {
         workerPromises.delete(id)
-        // FC4: Terminate the stalled worker to stop burning CPU
         if (proofWorker) {
           proofWorker.terminate()
           proofWorker = null
@@ -191,15 +198,20 @@ export async function generateV2Proof(
 
 async function generateOnMainThread(
   circuitInputs: Record<string, string | string[] | string[][]>,
-  onProgress?: (stage: string, progress: number) => void
+  onProgress?: (stage: string, progress: number) => void,
+  zkeyData?: Uint8Array
 ): Promise<V2ProofResult> {
   onProgress?.('Loading circuit...', 0.2)
   onProgress?.('Generating proof...', 0.4)
 
+  const zkeySource = zkeyData
+    ? { type: 'mem', data: zkeyData }
+    : ZKEY_PATH
+
   const { proof, publicSignals } = await fflonk.fullProve(
     circuitInputs,
     WASM_PATH,
-    ZKEY_PATH
+    zkeySource as string,
   )
 
   if (publicSignals.length !== 9) {

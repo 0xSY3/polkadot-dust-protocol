@@ -113,6 +113,9 @@ export function useV2Swap(keysRef: RefObject<V2Keys | null>, chainIdOverride?: n
         keys.nullifierKey,
         chainId,
         publicClient,
+        undefined,
+        undefined,
+        amountIn,
       )
 
       const relayer = createRelayerClient()

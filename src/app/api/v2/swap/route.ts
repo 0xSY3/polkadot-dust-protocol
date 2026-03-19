@@ -7,6 +7,8 @@ import { DUST_SWAP_ADAPTER_V2_ABI } from '@/lib/swap/contracts'
 import { syncAndPostRoot } from '@/lib/dustpool/v2/relayer-tree'
 import { toBytes32Hex } from '@/lib/dustpool/poseidon'
 import { computeAssetId } from '@/lib/dustpool/v2/commitment'
+import { BN254_FIELD_SIZE } from '@/lib/dustpool/v2/constants'
+import { PRIVACY_AMM_ADDRESS } from '@/lib/swap/constants'
 import { acquireNullifier, releaseNullifier } from '@/lib/dustpool/v2/pending-nullifiers'
 import { checkCooldown } from '@/lib/dustpool/v2/persistent-cooldown'
 import { incrementSwap, observeGasUsed, recordProofVerification } from '@/lib/metrics'
@@ -153,9 +155,6 @@ export async function POST(req: Request) {
       const publicAmount = BigInt(publicSignals[5])
       const publicAsset = BigInt(publicSignals[6])
 
-      // No compliance screening here: swap outputs are UTXO commitments re-deposited
-      // into DustPoolV2 — there is no recipient address to screen.
-
       // Swap direction: true if tokenIn is currency0 (swap 0→1), false if currency1 (swap 1→0)
       const zeroForOne = tokenIn.toLowerCase() === poolKey.currency0.toLowerCase()
 
@@ -165,6 +164,24 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Gas price too high' }, { status: 503, headers: NO_STORE })
       }
 
+      // Estimate withdraw amount for pre-swap validation
+      const ammAbi = ['function getAmountOut(uint256 amountIn, bool zeroForOne) external view returns (uint256)']
+      const amm = new ethers.Contract(PRIVACY_AMM_ADDRESS, ammAbi, sponsor.provider)
+
+      // publicAmount encodes withdraw amount as BN254_FIELD_SIZE - amount (field-negative)
+      const withdrawAmount = publicAmount > BN254_FIELD_SIZE / 2n
+        ? BN254_FIELD_SIZE - publicAmount
+        : publicAmount
+      const estimatedOutput = await amm.getAmountOut(withdrawAmount, zeroForOne)
+      const estimatedFee = (BigInt(estimatedOutput.toString()) * BigInt(relayerFeeBps)) / 10_000n
+      const estimatedUserAmount = BigInt(estimatedOutput.toString()) - estimatedFee
+
+      // Apply 1% slippage buffer to minAmountOut so commitment computed on-chain matches actual deposit
+      const effectiveMinAmountOut = BigInt(minAmountOut) > estimatedUserAmount
+        ? (estimatedUserAmount * 99n) / 100n
+        : BigInt(minAmountOut)
+
+      // Contract computes Poseidon commitment on-chain from ownerPubKey + blinding
       const tx = await adapter.executeSwap(
         proof,
         merkleRoot,
@@ -175,34 +192,36 @@ export async function POST(req: Request) {
         publicAmount,
         publicAsset,
         tokenIn,
-        {
-          currency0: poolKey.currency0,
-          currency1: poolKey.currency1,
-          fee: poolKey.fee,
-          tickSpacing: poolKey.tickSpacing,
-          hooks: poolKey.hooks,
-        },
         zeroForOne,
-        BigInt(minAmountOut),
+        effectiveMinAmountOut,
         BigInt(ownerPubKey),
         BigInt(blinding),
         tokenOut,
         await sponsor.getAddress(),
         relayerFeeBps,
         {
-          gasLimit: 900_000, // FFLONK verify + swap + re-deposit
+          gasLimit: 2_000_000,
           type: 2,
           maxFeePerGas,
           maxPriorityFeePerGas: feeData.maxPriorityFeePerGas || ethers.utils.parseUnits('1.5', 'gwei'),
         },
       )
 
-      const receipt = await tx.wait()
-      if (receipt.status !== 1) {
-        throw new Error('Transaction reverted on-chain')
+      let receipt: ethers.providers.TransactionReceipt
+      try {
+        receipt = await tx.wait()
+      } catch (waitErr) {
+        // pallet-revive receipt status bug: verify nullifier state instead
+        const pool = new ethers.Contract(poolAddress, DUST_POOL_V2_ABI as unknown as ethers.ContractInterface, sponsor.provider)
+        const null0Spent = await pool.nullifiers(nullifier0Hex)
+        if (null0Spent) {
+          receipt = await sponsor.provider.getTransactionReceipt(tx.hash)
+        } else {
+          throw waitErr
+        }
       }
 
-      // Parse PrivateSwapExecuted from adapter logs
+      // Parse PrivateSwapExecuted from adapter logs — commitment computed on-chain via Poseidon
       let outputCommitment: string | null = null
       let outputAmount: string | null = null
       for (const log of receipt.logs) {

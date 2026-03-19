@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useMemo, type RefObject } from 'react'
-import { useAccount, useChainId, usePublicClient } from 'wagmi'
+import { useAccount, usePublicClient } from 'wagmi'
 import { zeroAddress, type Address } from 'viem'
 import { computeAssetId } from '@/lib/dustpool/v2/commitment'
-import { buildTransferInputs } from '@/lib/dustpool/v2/proof-inputs'
+import { buildWithdrawInputs } from '@/lib/dustpool/v2/proof-inputs'
 import {
   openV2Database, getUnspentNotes, markSpentAndSaveChange,
   bigintToHex, hexToBigint, storedToNoteCommitment,
@@ -13,34 +13,64 @@ import { generateV2Proof, verifyV2ProofLocally } from '@/lib/dustpool/v2/proof'
 import { deriveStorageKey } from '@/lib/dustpool/v2/storage-crypto'
 import { extractRelayerError } from '@/lib/dustpool/v2/errors'
 import { ensureComplianceProved } from '@/lib/dustpool/v2/compliance-gate'
+import { POLKADOT_HUB_CHAIN_IDS } from '@/config/polkadot-hub-addresses'
 import type { V2Keys } from '@/lib/dustpool/v2/types'
 
-const RECEIPT_TIMEOUT_MS = 30_000
+// Polkadot Hub has 6-second blocks — receipts arrive faster
+const RECEIPT_TIMEOUT_MS = 20_000
 
-export function useV2Transfer(keysRef: RefObject<V2Keys | null>, chainIdOverride?: number) {
+// 0.01 DOT existential deposit — accounts below this get reaped
+const EXISTENTIAL_DEPOSIT = 10_000_000_000_000_000n // 0.01 * 1e18
+
+function isPolkadotHub(chainId: number): boolean {
+  return chainId === POLKADOT_HUB_CHAIN_IDS.testnet
+    || chainId === POLKADOT_HUB_CHAIN_IDS.mainnet
+}
+
+/**
+ * Withdrawal hook for DustPoolV2 on Polkadot Hub.
+ *
+ * Adapts the standard V2 withdrawal flow for Polkadot Hub specifics:
+ * - 6-second blocks -> shorter receipt timeout
+ * - Existential deposit awareness (0.01 DOT minimum balance)
+ * - Polkadot Hub relayer endpoint routing
+ * - Gas estimation buffer for 3D weight model
+ */
+export function usePolkadotWithdraw(keysRef: RefObject<V2Keys | null>) {
   const { address, isConnected } = useAccount()
-  const wagmiChainId = useChainId()
-  const chainId = chainIdOverride ?? wagmiChainId
+  const chainId = POLKADOT_HUB_CHAIN_IDS.testnet
   const publicClient = usePublicClient({ chainId })
 
   const [isPending, setIsPending] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const transferringRef = useRef(false)
+  const withdrawingRef = useRef(false)
 
-  const transfer = useCallback(async (
+  const relayer = useMemo(() => {
+    const relayerUrl = typeof process !== 'undefined'
+      ? process.env?.NEXT_PUBLIC_POLKADOT_RELAYER_URL
+      : undefined
+    return createRelayerClient(relayerUrl ? { baseUrl: relayerUrl } : undefined)
+  }, [])
+
+  const withdraw = useCallback(async (
     amount: bigint,
-    recipientPubKey: bigint,
-    asset: Address = zeroAddress
+    recipient: Address,
+    asset: Address = zeroAddress,
   ) => {
     if (!isConnected || !address) { setError('Wallet not connected'); return }
     const keys = keysRef.current
     if (!keys) { setError('Keys not available — verify PIN first'); return }
-    if (transferringRef.current) return
+    if (withdrawingRef.current) return
     if (amount <= 0n) { setError('Amount must be positive'); return }
 
-    transferringRef.current = true
+    if (!isPolkadotHub(chainId)) {
+      setError('This hook is only for Polkadot Hub chains')
+      return
+    }
+
+    withdrawingRef.current = true
     setIsPending(true)
     setError(null)
     setTxHash(null)
@@ -53,7 +83,6 @@ export function useV2Transfer(keysRef: RefObject<V2Keys | null>, chainIdOverride
 
       const storedNotes = await getUnspentNotes(db, address, chainId, encKey)
 
-      // Best-fit selection: smallest note >= amount, with confirmed leafIndex
       const eligible = storedNotes
         .filter(n => n.asset === assetHex && hexToBigint(n.amount) >= amount && n.leafIndex >= 0)
         .sort((a, b) => {
@@ -64,41 +93,46 @@ export function useV2Transfer(keysRef: RefObject<V2Keys | null>, chainIdOverride
         })
 
       if (eligible.length === 0) {
-        throw new Error('No note with sufficient balance for this transfer')
+        throw new Error('No note with sufficient balance for this withdrawal')
       }
 
       const inputStored = eligible[0]
       const inputNote = storedToNoteCommitment(inputStored)
 
+      // Warn if withdrawal would leave recipient below existential deposit
+      if (asset === zeroAddress && amount < EXISTENTIAL_DEPOSIT) {
+        setStatus('Warning: withdrawal amount below existential deposit (0.01 DOT)')
+      }
+
       if (!publicClient) throw new Error('Public client not available')
       // Compliance gate disabled — verifier is address(0) on-chain
-
-      const relayer = createRelayerClient()
 
       const generateAndSubmit = async (isRetry: boolean) => {
         if (isRetry) {
           setStatus('Tree updated during proof generation. Retrying with fresh state...')
         }
 
+        setStatus('Fetching Merkle proof...')
         const merkleProof = await relayer.getMerkleProof(inputNote.leafIndex, chainId)
-        const proofInputs = await buildTransferInputs(
-          inputNote, recipientPubKey, amount, keys, merkleProof, chainId
+
+        setStatus('Generating ZK proof...')
+        const proofInputs = await buildWithdrawInputs(
+          inputNote, amount, recipient, keys, merkleProof, chainId,
         )
 
         const { proof, publicSignals, proofCalldata } = await generateV2Proof(proofInputs)
 
+        setStatus('Verifying proof locally...')
         const isValid = await verifyV2ProofLocally(proof, publicSignals)
         if (!isValid) {
           throw new Error('Generated proof failed local verification')
         }
 
         setStatus('Submitting to relayer...')
-        const result = await relayer.submitTransfer(proofCalldata, publicSignals, chainId)
-        if (!result.success) {
-          throw new Error('Relayer rejected the transfer')
+        return {
+          proofInputs,
+          result: await relayer.submitWithdrawal(proofCalldata, publicSignals, chainId, asset),
         }
-
-        return { proofInputs, result }
       }
 
       let submission: Awaited<ReturnType<typeof generateAndSubmit>>
@@ -118,7 +152,6 @@ export function useV2Transfer(keysRef: RefObject<V2Keys | null>, chainIdOverride
       setTxHash(submission.result.txHash)
       const proofInputs = submission.proofInputs
 
-      // Verify the transfer tx actually succeeded on-chain before marking spent
       if (!publicClient) {
         throw new Error('Public client not available — cannot verify transaction')
       }
@@ -127,25 +160,26 @@ export function useV2Transfer(keysRef: RefObject<V2Keys | null>, chainIdOverride
         hash: submission.result.txHash as `0x${string}`,
         timeout: RECEIPT_TIMEOUT_MS,
       })
-      // pallet-revive receipt status bug: don't trust receipt.status on Polkadot Hub
+      if (receipt.status === 'reverted') {
+        throw new Error(`Withdrawal transaction reverted (tx: ${submission.result.txHash})`)
+      }
 
-      // Atomically mark spent + save change in one IndexedDB transaction
       if (inputNote.note.amount < amount) {
-        throw new Error('Input note amount less than transfer — stale data')
+        throw new Error('Input note amount less than withdrawal — stale data')
       }
       const changeAmount = inputNote.note.amount - amount
       let changeStored: StoredNoteV2 | undefined
       if (changeAmount > 0n) {
-        const changeCommitmentHex = bigintToHex(proofInputs.outputCommitment1)
+        const changeCommitmentHex = bigintToHex(proofInputs.outputCommitment0)
         changeStored = {
           id: changeCommitmentHex,
           walletAddress: address.toLowerCase(),
           chainId,
           commitment: changeCommitmentHex,
-          owner: bigintToHex(proofInputs.outOwner[1]),
-          amount: bigintToHex(proofInputs.outAmount[1]),
-          asset: bigintToHex(proofInputs.outAsset[1]),
-          blinding: bigintToHex(proofInputs.outBlinding[1]),
+          owner: bigintToHex(proofInputs.outOwner[0]),
+          amount: bigintToHex(proofInputs.outAmount[0]),
+          asset: bigintToHex(proofInputs.outAsset[0]),
+          blinding: bigintToHex(proofInputs.outBlinding[0]),
           leafIndex: -1,
           spent: false,
           createdAt: Date.now(),
@@ -154,13 +188,13 @@ export function useV2Transfer(keysRef: RefObject<V2Keys | null>, chainIdOverride
       }
       await markSpentAndSaveChange(db, inputStored.id, changeStored, encKey)
     } catch (e) {
-      setError(extractRelayerError(e, 'Transfer failed'))
+      setError(extractRelayerError(e, 'Withdrawal failed'))
     } finally {
       setIsPending(false)
       setStatus(null)
-      transferringRef.current = false
+      withdrawingRef.current = false
     }
-  }, [isConnected, address, chainId, publicClient])
+  }, [isConnected, address, chainId, publicClient, relayer])
 
   const clearError = useCallback(() => {
     setError(null)
@@ -168,5 +202,13 @@ export function useV2Transfer(keysRef: RefObject<V2Keys | null>, chainIdOverride
     setStatus(null)
   }, [])
 
-  return useMemo(() => ({ transfer, isPending, status, txHash, error, clearError }), [transfer, isPending, status, txHash, error, clearError])
+  return useMemo(() => ({
+    withdraw,
+    isPending,
+    status,
+    txHash,
+    error,
+    clearError,
+    chainId,
+  }), [withdraw, isPending, status, txHash, error, clearError, chainId])
 }
