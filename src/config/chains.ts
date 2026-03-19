@@ -93,7 +93,8 @@ const POLKADOT_HUB_TESTNET_CONFIG: ChainConfig = {
     dustPoolV2Verifier: '0x844d11bD48D85411eE8cD1a7cB0aC00672B1d516',
     dustPoolV2SplitVerifier: '0xBf5054CE2fca574D2fE995FE7a3DbfCaB39BCac9',
     dustPoolV2ComplianceVerifier: null,
-    dustSwapAdapterV2: '0xF91C12b8e0a762469de374523D80eb8764463366',
+    // Two-tx swap: proof recipient is the relayer wallet (no adapter contract needed)
+    dustSwapAdapterV2: '0x8d56E94a02F06320BDc68FAfE23DEc9Ad7463496',
     dustSwapVanillaPoolKey: {
       currency0: '0x97b74D21ca46c3CaB2918fF10c8418c606223638',
       currency1: '0xA3896E6B05d94F3182279b60b68A6e43Bf3ab5A9',
