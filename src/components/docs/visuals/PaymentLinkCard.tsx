@@ -54,7 +54,7 @@ export function PaymentLinkCard() {
                         Volume
                     </span>
                     <span className="block text-lg font-bold font-mono text-white">
-                        0.84 ETH
+                        0.84 PAS
                     </span>
                 </div>
 

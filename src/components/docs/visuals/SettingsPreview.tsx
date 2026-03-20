@@ -35,7 +35,7 @@ export function SettingsAccountSnippet() {
           <span className="text-[12px] font-semibold text-[#7C3AED] font-mono">dust.alice</span>
         </Row>
         <Row label="Network" last>
-          <span className="text-[11px] text-[rgba(255,255,255,0.6)] font-mono">Ethereum Sepolia</span>
+          <span className="text-[11px] text-[rgba(255,255,255,0.6)] font-mono">Polkadot Hub</span>
         </Row>
       </div>
     </div>

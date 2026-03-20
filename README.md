@@ -38,7 +38,7 @@ When enabled, the compliance stack provides:
 - **Deposit screening** — configurable compliance oracle
 - **Post-deposit cooldown** — 1-hour standby period after deposit (Unshield-Only Standby pattern)
 - **ZK exclusion proofs** — proves a commitment is NOT in the sanctions exclusion set without revealing the commitment
-  - DustV2Compliance circuit: 13,543 R1CS constraints, FFLONK proof, 2 public signals (exclusionRoot, nullifier)
+  - DustV2Compliance circuit: ~6,884 R1CS constraints, FFLONK proof, 2 public signals (exclusionRoot, nullifier)
   - Sparse Merkle Tree (20 levels) of flagged commitments, maintained off-chain by relayer
   - Pre-call compliance pattern: `verifyComplianceProof()` sets flag, `withdraw()`/`withdrawSplit()` consumes it
 - **View keys & selective disclosure** — signed disclosure statements with CSV/PDF export for auditors
@@ -308,7 +308,7 @@ contracts/
 │   └── circuits/v2/
 │       ├── DustV2Transaction.circom  # 2-in-2-out UTXO circuit (12,420 constraints)
 │       ├── DustV2Split.circom        # 2-in-8-out split circuit (32,074 constraints)
-│       └── DustV2Compliance.circom   # ZK exclusion proof circuit (13,543 constraints)
+│       └── DustV2Compliance.circom   # ZK exclusion proof circuit (~6,884 constraints)
 ├── polkadot-hub/             # Polkadot Hub specific contracts and deployment scripts
 ├── wallet/                   # StealthWallet + StealthWalletFactory
 └── naming/                   # NameRegistryMerkle + NameVerifier

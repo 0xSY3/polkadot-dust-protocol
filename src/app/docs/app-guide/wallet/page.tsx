@@ -133,7 +133,7 @@ export default function WalletGuidePage() {
           {[
             "The Inbox tab lists all detected payments with balance, block number, and claim status.",
             "Unclaimed payments with sufficient balance show a Claim button to sweep funds to your wallet.",
-            "Claim destination can be changed in the claim address selector (CREATE2 or ERC-4337).",
+            "Claim destination can be changed in the claim address selector (CREATE2).",
             "Dust-amount payments (below gas threshold for EOA claims) are flagged but can still be claimed via sponsored wallet types.",
           ].map((item, i) => (
             <li key={i} className="flex gap-3 text-sm text-[rgba(255,255,255,0.6)]">

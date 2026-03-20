@@ -11,7 +11,7 @@ export function WithdrawBalanceSnippet() {
         <div className="flex items-baseline justify-between">
           <p className="text-lg font-extrabold text-white">
             3.5000{" "}
-            <span className="text-sm font-semibold text-[rgba(255,255,255,0.5)]">ETH</span>
+            <span className="text-sm font-semibold text-[rgba(255,255,255,0.5)]">PAS</span>
           </p>
           <span className="text-[10px] text-[rgba(255,255,255,0.35)]">4 unspent notes</span>
         </div>
@@ -29,15 +29,15 @@ export function WithdrawNoteSelectionSnippet() {
         </p>
         <div className="flex justify-between items-center mb-1">
           <span className="text-[11px] text-[rgba(255,255,255,0.4)]">Input note</span>
-          <span className="text-[11px] font-semibold text-white">2.000000 ETH</span>
+          <span className="text-[11px] font-semibold text-white">2.000000 PAS</span>
         </div>
         <div className="flex justify-between items-center mb-2">
           <span className="text-[11px] text-[rgba(255,255,255,0.4)]">Withdraw</span>
-          <span className="text-[11px] font-semibold text-white">1.000000 ETH</span>
+          <span className="text-[11px] font-semibold text-white">1.000000 PAS</span>
         </div>
         <div className="flex justify-between items-center pt-1.5 border-t border-[rgba(255,255,255,0.06)]">
           <span className="text-[11px] text-[rgba(255,255,255,0.4)]">Change returned</span>
-          <span className="text-[11px] font-semibold text-[#00FF41]">1.000000 ETH</span>
+          <span className="text-[11px] font-semibold text-[#00FF41]">1.000000 PAS</span>
         </div>
       </div>
     </div>
@@ -59,7 +59,7 @@ export function WithdrawDenomSnippet() {
               key={i}
               className="px-2 py-0.5 rounded-sm bg-[rgba(0,255,65,0.08)] border border-[rgba(0,255,65,0.15)] text-[10px] text-[#00FF41]"
             >
-              {val} ETH
+              {val} PAS
             </span>
           ))}
         </div>

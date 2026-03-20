@@ -246,7 +246,7 @@ export function AccountTypeSwitcher() {
 
                             <p className="text-[11px] text-dust-muted leading-relaxed">
                                 {activeTab === 'eoa' &&
-                                    'Standard Ethereum accounts. Simple but limited. Requires ETH for gas on every transaction.'}
+                                    'Standard externally-owned accounts. Simple but limited. Requires PAS for gas on every transaction.'}
                                 {activeTab === '4337' &&
                                     'Standard for Dust claims. UserOps sponsored by DustPaymaster — recipient pays zero gas.'}
                                 {activeTab === 'create2' &&

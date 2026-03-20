@@ -1,9 +1,9 @@
 const MOCK = {
   recipient: "dust.bob",
   recipientKey: "0x1a2b3c...f9e8d7",
-  inputNote: "1.0000 ETH",
-  changeNote: "0.2500 ETH",
-  outputNote: "0.7500 ETH",
+  inputNote: "1.0000 PAS",
+  changeNote: "0.2500 PAS",
+  outputNote: "0.7500 PAS",
 };
 
 const snippetWrap = "my-6 rounded-sm border border-[rgba(255,255,255,0.08)] overflow-hidden";

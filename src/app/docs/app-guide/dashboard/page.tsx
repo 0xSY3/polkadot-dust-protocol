@@ -34,7 +34,7 @@ export default function DashboardGuidePage() {
         <ul className="space-y-2 mb-4">
           {[
             ["Stealth", "Unclaimed payments sitting in stealth addresses that only you can detect via ECDH scanning."],
-            ["Claimed", "Payments already claimed to one of your wallets (CREATE2 or ERC-4337)."],
+            ["Claimed", "Payments already claimed to one of your wallets (CREATE2)."],
           ].map(([label, desc]) => (
             <li key={label} className="flex gap-3 text-sm text-[rgba(255,255,255,0.6)]">
               <span className="shrink-0 text-[#00FF41] mt-0.5">—</span>

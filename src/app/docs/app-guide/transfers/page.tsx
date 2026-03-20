@@ -103,9 +103,10 @@ export default function TransfersPage() {
             title: "Resolve recipient public key",
             children: (
               <p>
-                The browser looks up the recipient&apos;s <code>ownerPubKey</code> from
-                the ERC-6538 stealth meta-address registry on-chain. This is
-                the Poseidon hash of their spending key.
+                If a <code>.dust</code> username is entered, the browser resolves the
+                recipient&apos;s <code>ownerPubKey</code> from the on-chain name registry.
+                Alternatively, you can paste a raw owner public key (hex format) directly,
+                bypassing name resolution entirely.
               </p>
             ),
           },

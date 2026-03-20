@@ -66,7 +66,7 @@ export function WalletAddressListSnippet() {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs font-mono text-white">{entry.addr}</span>
-                  <span className="text-[10px] font-mono text-[rgba(255,255,255,0.4)]">{entry.balance} ETH</span>
+                  <span className="text-[10px] font-mono text-[rgba(255,255,255,0.4)]">{entry.balance} PAS</span>
                 </div>
               </div>
               <StatusBadge status={entry.status} />
@@ -92,7 +92,7 @@ export function WalletSendSnippet() {
               <span className="text-xs font-mono text-[rgba(255,255,255,0.5)]">dust.bob</span>
             </div>
             <div className="px-3 py-2 rounded-sm border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] w-28">
-              <span className="text-xs font-mono text-white">0.5 ETH</span>
+              <span className="text-xs font-mono text-white">0.5 PAS</span>
             </div>
           </div>
           <div className="flex items-center justify-center py-2 rounded-sm bg-[#00FF41] font-mono font-bold text-xs text-black">
@@ -115,7 +115,7 @@ export function WalletReceiveSnippet() {
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <span className="text-sm font-mono font-bold text-[#00FF41]">dust.alice</span>
-            <span className="text-[10px] font-mono text-[rgba(255,255,255,0.4)]">st:thanos:0x04a1b2...c3d4e5</span>
+            <span className="text-[10px] font-mono text-[rgba(255,255,255,0.4)]">st:dust:0x04a1b2...c3d4e5</span>
           </div>
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]">
             <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" className="w-3 h-3"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
@@ -148,7 +148,7 @@ export function WalletV1V2ComparisonSnippet() {
             <div className="text-[10px] font-mono font-bold text-[#00FF41] tracking-wider mb-2">V2: UTXO POOL</div>
             <div className="flex flex-col gap-1.5 text-[10px] font-mono text-[rgba(255,255,255,0.5)]">
               <span>ZK proof withdrawal</span>
-              <span>Hidden amounts (Pedersen)</span>
+              <span>Hidden amounts (Poseidon)</span>
               <span>No fan-in problem</span>
             </div>
             <div className="mt-2.5 flex items-center gap-1.5">

@@ -166,7 +166,7 @@ export default function StealthTransfersPage() {
           <DocsBadge variant="green">ERC-6538</DocsBadge>
           <DocsBadge variant="amber">Sponsor Relay (EIP-712)</DocsBadge>
           <DocsBadge variant="muted">secp256k1 ECDH</DocsBadge>
-          <DocsBadge variant="muted">PBKDF2-SHA512</DocsBadge>
+          <DocsBadge variant="muted">PBKDF2-SHA256</DocsBadge>
           <DocsBadge variant="green">BN254 (V2)</DocsBadge>
           <DocsBadge variant="muted">Poseidon (V2)</DocsBadge>
           <DocsBadge variant="muted">pallet-revive</DocsBadge>

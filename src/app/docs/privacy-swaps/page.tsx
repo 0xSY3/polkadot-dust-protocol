@@ -9,9 +9,9 @@ import { techArticleJsonLd } from "@/lib/seo/jsonLd";
  * XSS-safe: all values below are hardcoded string literals defined in this file.
  * safeJsonLd() in jsonLd.ts escapes '<' as \u003c. No user input flows into this data.
  */
-const articleLd = techArticleJsonLd("Privacy Swaps — Private Token Exchange via Two-Tx Pattern on Polkadot Hub", "Swap PAS and MockUSDC privately. The relayer withdraws from DustPoolV2 via FFLONK proof, swaps via PrivacyAMM, and re-deposits the output — using a two-transaction pattern required by pallet-revive call depth limits.", "/docs/privacy-swaps");
+const articleLd = techArticleJsonLd("Privacy Swaps — Private Token Exchange via Sequential Transaction Pattern on Polkadot Hub", "Swap PAS and MockUSDC privately. The relayer withdraws from DustPoolV2 via FFLONK proof, swaps via PrivacyAMM, and re-deposits the output — using a multi-step transaction pattern required by pallet-revive call depth limits.", "/docs/privacy-swaps");
 
-export const metadata = docsMetadata("Privacy Swaps — Private Token Exchange via Two-Tx Pattern on Polkadot Hub", "Swap PAS and MockUSDC privately. The relayer withdraws from DustPoolV2 via FFLONK proof, swaps via PrivacyAMM, and re-deposits the output — using a two-transaction pattern required by pallet-revive call depth limits.", "/docs/privacy-swaps");
+export const metadata = docsMetadata("Privacy Swaps — Private Token Exchange via Sequential Transaction Pattern on Polkadot Hub", "Swap PAS and MockUSDC privately. The relayer withdraws from DustPoolV2 via FFLONK proof, swaps via PrivacyAMM, and re-deposits the output — using a multi-step transaction pattern required by pallet-revive call depth limits.", "/docs/privacy-swaps");
 
 export default function PrivacySwapsPage() {
   return (
@@ -21,7 +21,7 @@ export default function PrivacySwapsPage() {
     <DocsPage
       currentHref="/docs/privacy-swaps"
       title="Privacy Swaps"
-      subtitle="Swap PAS and MockUSDC privately on Polkadot Hub Testnet. The relayer withdraws from DustPoolV2 via FFLONK proof, swaps via PrivacyAMM (WPAS/MockUSDC pool), and re-deposits the output as a new UTXO note — using a two-transaction pattern required by pallet-revive call depth limits."
+      subtitle="Swap PAS and MockUSDC privately on Polkadot Hub Testnet. The relayer withdraws from DustPoolV2 via FFLONK proof, swaps via PrivacyAMM (WPAS/MockUSDC pool), and re-deposits the output as a new UTXO note — using a multi-step transaction pattern required by pallet-revive call depth limits."
       badge="CORE FEATURE"
     >
 
@@ -34,7 +34,7 @@ export default function PrivacySwapsPage() {
           at similar times.
         </p>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed">
-          Privacy Swaps on Polkadot Hub use a <strong>two-transaction pattern</strong> instead of an atomic adapter
+          Privacy Swaps on Polkadot Hub use a <strong>multi-step transaction pattern</strong> instead of an atomic adapter
           contract. Due to pallet-revive&apos;s call depth limits, the original single-tx adapter approach doesn&apos;t work.
           Instead, the relayer first withdraws from DustPoolV2 (proving UTXO ownership via FFLONK proof) to
           its own wallet, then executes a swap via PrivacyAMM (WPAS/MockUSDC pool) and re-deposits the swap output
@@ -70,12 +70,12 @@ export default function PrivacySwapsPage() {
               confirms the proof recipient is the relayer wallet, and checks nullifier freshness.</>,
           },
           {
-            title: "Two-tx execution: withdraw \u2192 swap + re-deposit",
+            title: "Sequential execution: withdraw \u2192 swap + re-deposit",
             children: <>The relayer executes two separate transactions:
               <strong> (1)</strong> calls <code>DustPoolV2.withdraw()</code> with the FFLONK proof to release PAS
               to the relayer wallet. <strong>(2)</strong> The relayer wraps PAS to WPAS (if needed), swaps on
               PrivacyAMM, computes a Poseidon commitment for the swap output, and deposits it back into
-              DustPoolV2. This two-tx pattern is necessary because pallet-revive cannot handle the nested call depth
+              DustPoolV2. This multi-step pattern is necessary because pallet-revive cannot handle the nested call depth
               that the original single-tx adapter approach required.</>,
           },
           {
@@ -109,7 +109,7 @@ export default function PrivacySwapsPage() {
                                                  \u2514\u2500 Poseidon commitment for output
                                                  \u2514\u2500 new UTXO note in pool
 
-  Two-tx pattern required by pallet-revive call depth limit`}
+  Multi-step pattern required by pallet-revive call depth limit`}
         </div>
       </section>
 
@@ -128,11 +128,11 @@ export default function PrivacySwapsPage() {
               {[
                 ["Swap amounts", "Fixed denominations only", "Arbitrary amounts"],
                 ["Pool type", "Custom DustSwapPool contracts", "PrivacyAMM on Polkadot Hub (WPAS/MockUSDC)"],
-                ["Hook", "DustSwapHook (beforeSwap/afterSwap)", "No hooks \u2014 two-tx pattern via relayer"],
+                ["Hook", "DustSwapHook (beforeSwap/afterSwap)", "No hooks \u2014 multi-step pattern via relayer"],
                 ["Proof system", "Groth16 (PrivateSwap.circom)", "FFLONK (reuses DustV2Transaction)"],
                 ["Deposit step", "Separate deposit into DustSwapPool", "Uses existing DustPoolV2 notes"],
                 ["Output", "Tokens to stealth address", "New UTXO note in DustPoolV2"],
-                ["Execution", "Single tx via adapter contract", "Two txs: withdraw to relayer, then swap+deposit (pallet-revive depth limit)"],
+                ["Execution", "Single tx via adapter contract", "Multi-step: withdraw to relayer, then swap+deposit (pallet-revive depth limit)"],
                 ["Wait period", "50-block minimum wait", "None required"],
                 ["Tokens", "ETH/USDC on Ethereum", "PAS/MockUSDC on Polkadot Hub Testnet"],
               ].map(([k, v1, v2]) => (
@@ -156,8 +156,8 @@ export default function PrivacySwapsPage() {
               desc: "No fixed denominations. Swap any amount from your DustPoolV2 notes. The UTXO model handles change automatically via the 2-in-2-out circuit.",
             },
             {
-              label: "Two-transaction execution",
-              desc: "Withdraw and swap happen in two separate transactions due to pallet-revive call depth limits. The relayer wallet is a trusted intermediary during the swap window.",
+              label: "Sequential transaction execution",
+              desc: "Withdraw and swap happen in sequential transactions due to pallet-revive call depth limits. The relayer wallet is a trusted intermediary during the swap window.",
             },
             {
               label: "PrivacyAMM on Polkadot Hub",
@@ -181,7 +181,7 @@ export default function PrivacySwapsPage() {
             },
             {
               label: "Relayer-based submission",
-              desc: "A same-origin relayer submits both transactions, paying gas on behalf of the user. The relayer fee is capped at 200 bps (2%) and validated before submission.",
+              desc: "A same-origin relayer submits both transactions, paying gas on behalf of the user. The default relayer fee is 200 bps (2%), with an enforced maximum of 500 bps (5%), validated before submission.",
             },
           ].map(({ label, desc }) => (
             <div key={label} className="flex gap-4 p-3 border border-[rgba(255,255,255,0.05)] rounded-sm">
@@ -212,7 +212,7 @@ export default function PrivacySwapsPage() {
           <DocsBadge variant="green">DustV2Transaction</DocsBadge>
           <DocsBadge variant="green">PrivacyAMM</DocsBadge>
           <DocsBadge variant="muted">BN254</DocsBadge>
-          <DocsBadge variant="muted">Two-Tx Pattern</DocsBadge>
+          <DocsBadge variant="muted">Multi-Step Pattern</DocsBadge>
           <DocsBadge variant="muted">Arbitrary Amounts</DocsBadge>
           <DocsBadge variant="amber">Chain ID Binding</DocsBadge>
           <DocsBadge variant="amber">Slippage Protection</DocsBadge>

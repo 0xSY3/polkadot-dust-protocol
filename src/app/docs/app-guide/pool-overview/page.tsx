@@ -91,7 +91,7 @@ export default function PoolOverviewAppGuidePage() {
               <tr className="border-b border-[rgba(255,255,255,0.04)]">
                 <td className="py-2 pr-4">Fee tier</td>
                 <td className="py-2 pr-4 text-white">0.3%</td>
-                <td className="py-2">PrivacyAMM swap fee (3000 bps)</td>
+                <td className="py-2">PrivacyAMM swap fee (3000 = 0.3%)</td>
               </tr>
               <tr className="border-b border-[rgba(255,255,255,0.04)]">
                 <td className="py-2 pr-4">Relayer fee</td>

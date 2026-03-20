@@ -4,14 +4,14 @@ import { DocsBadge } from "@/components/docs/DocsBadge";
 import { AccountTypeSwitcher } from "@/components/docs/visuals/AccountTypeSwitcher";
 import { docsMetadata } from "@/lib/seo/metadata";
 
-export const metadata = docsMetadata("Account Types — Gasless Stealth Claims on Polkadot Hub", "How Dust works with EOA and CREATE2 StealthWallet account types on Polkadot Hub Testnet. EIP-7702 and ERC-4337 are not supported by pallet-revive. Claims use the EIP-712 sponsor-relay pattern.", "/docs/eip-7702");
+export const metadata = docsMetadata("Account Types — Gasless Stealth Claims on Polkadot Hub", "How Dust works with EOA and CREATE2 StealthWallet account types on Polkadot Hub Testnet. EIP-7702 and ERC-4337 are not supported by pallet-revive. Claims use the EIP-191 sponsor-relay pattern.", "/docs/eip-7702");
 
 export default function Eip7702Page() {
   return (
     <DocsPage
       currentHref="/docs/eip-7702"
       title="Account Types"
-      subtitle="Dust on Polkadot Hub uses the EIP-712 sponsor-relay StealthWallet pattern for gasless claims. EIP-7702 and ERC-4337 are not supported by pallet-revive."
+      subtitle="Dust on Polkadot Hub uses the EIP-191 sponsor-relay StealthWallet pattern for gasless claims. EIP-7702 and ERC-4337 are not supported by pallet-revive."
       badge="ACCOUNT & SECURITY"
     >
 
@@ -19,7 +19,7 @@ export default function Eip7702Page() {
         <h2 className="text-sm font-mono font-semibold text-white tracking-wider mb-3 uppercase">Account Types on Polkadot Hub</h2>
         <p className="text-sm text-[rgba(255,255,255,0.6)] leading-relaxed mb-6">
           Polkadot Hub uses pallet-revive, which supports a subset of EVM features. ERC-4337 (EntryPoint/Paymaster)
-          and EIP-7702 are not available. Dust uses the <strong>EIP-712 sponsor-relay StealthWallet</strong> pattern
+          and EIP-7702 are not available. Dust uses the <strong>EIP-191 sponsor-relay StealthWallet</strong> pattern
           for all gasless stealth claims — a CREATE2 wallet is deployed and drained atomically, with gas paid by a
           sponsor relayer (0.5% fee).
         </p>
@@ -51,13 +51,13 @@ export default function Eip7702Page() {
           {/* Sponsor Relay (Active) */}
           <div className="border border-[rgba(0,255,65,0.12)] rounded-sm overflow-hidden">
             <div className="px-4 py-3 bg-[rgba(0,255,65,0.03)] flex items-center justify-between">
-              <p className="text-[12px] font-mono font-semibold text-white">EIP-712 Sponsor Relay (StealthWallet)</p>
+              <p className="text-[12px] font-mono font-semibold text-white">EIP-191 Sponsor Relay (StealthWallet)</p>
               <DocsBadge variant="green">Default on Polkadot Hub</DocsBadge>
             </div>
             <div className="px-4 py-4">
               <p className="text-xs text-[rgba(255,255,255,0.55)] leading-relaxed mb-3">
                 Default for stealth claims on Polkadot Hub. The stealth private key signs an{" "}
-                <strong>EIP-712 message</strong> locally. The sponsor relayer submits it to the{" "}
+                <strong>EIP-191 message</strong> locally. The sponsor relayer submits it to the{" "}
                 <code>StealthWalletFactory</code>, which deploys a <code>StealthWallet</code> at the CREATE2
                 stealth address and immediately drains its balance to the recipient&apos;s claim address.
                 Gas is paid by the sponsor relayer (0.5% fee). This replaces ERC-4337 because pallet-revive
@@ -100,7 +100,7 @@ export default function Eip7702Page() {
               <p className="text-xs text-[rgba(255,255,255,0.55)] leading-relaxed mb-3">
                 EIP-7702 allows an EOA to temporarily adopt the bytecode of a smart contract within a single
                 transaction. <strong>This is not supported on Polkadot Hub</strong> because pallet-revive does
-                not implement this feature. Dust uses the EIP-712 sponsor-relay StealthWallet pattern instead.
+                not implement this feature. Dust uses the EIP-191 sponsor-relay StealthWallet pattern instead.
               </p>
               <p className="text-xs text-[rgba(255,255,255,0.55)] leading-relaxed mb-3">
                 If EIP-7702 becomes available on Polkadot Hub in the future, it would enable:
@@ -127,7 +127,7 @@ export default function Eip7702Page() {
       </section>
 
       <DocsCallout type="info" title="Which type does Dust use on Polkadot Hub?">
-        Dust uses the <strong>EIP-712 sponsor-relay StealthWallet</strong> pattern for all stealth claims
+        Dust uses the <strong>EIP-191 sponsor-relay StealthWallet</strong> pattern for all stealth claims
         on Polkadot Hub. Neither ERC-4337 nor EIP-7702 are supported by pallet-revive. The sponsor relayer
         pays gas and takes a 0.5% fee from the claimed amount.
       </DocsCallout>
@@ -146,7 +146,7 @@ export default function Eip7702Page() {
             <tbody className="divide-y divide-[rgba(255,255,255,0.04)]">
               {[
                 ["EOA", "Via relayer", "✗", "✗", "—"],
-                ["StealthWallet (CREATE2)", "✓ Sponsor relay", "✓ (deploy+drain)", "✓ (atomic)", "EIP-712"],
+                ["StealthWallet (CREATE2)", "✓ Sponsor relay", "✓ (deploy+drain)", "✓ (atomic)", "EIP-191"],
                 ["ERC-4337", "✗ Not on pallet-revive", "✓", "✓ (atomic)", "ERC-4337"],
                 ["EIP-7702", "✗ Not on pallet-revive", "✓ (ephemeral)", "✗", "EIP-7702"],
               ].map(([type, ...rest]) => (

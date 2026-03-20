@@ -43,7 +43,7 @@ export function DashboardBalanceSnippet() {
 
         <div className="mb-3">
           <span className="text-2xl font-bold text-white font-mono tracking-tight">12.4500</span>
-          <span className="text-sm text-[rgba(255,255,255,0.5)] font-mono ml-1.5">ETH</span>
+          <span className="text-sm text-[rgba(255,255,255,0.5)] font-mono ml-1.5">PAS</span>
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
@@ -52,14 +52,14 @@ export function DashboardBalanceSnippet() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 text-[rgba(255,255,255,0.4)]"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
               <span className="text-[10px] text-[rgba(255,255,255,0.45)] uppercase tracking-wider font-mono">Stealth</span>
             </div>
-            <span className="text-xs font-bold text-white font-mono">2.2500 ETH</span>
+            <span className="text-xs font-bold text-white font-mono">2.2500 PAS</span>
           </div>
           <div className="p-2.5 rounded-sm border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.01)]">
             <div className="flex items-center gap-1.5 mb-1">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 text-[rgba(255,255,255,0.4)]"><polyline points="20 6 9 17 4 12" /></svg>
               <span className="text-[10px] text-[rgba(255,255,255,0.45)] uppercase tracking-wider font-mono">Claimed</span>
             </div>
-            <span className="text-xs font-bold text-white font-mono">0.2000 ETH</span>
+            <span className="text-xs font-bold text-white font-mono">0.2000 PAS</span>
           </div>
         </div>
       </Card>
@@ -80,7 +80,7 @@ export function DashboardPoolSnippet() {
         </div>
 
         <div className="flex items-baseline gap-3 mb-3">
-          <span className="text-xl font-bold text-white font-mono tracking-tight">10.0000 ETH</span>
+          <span className="text-xl font-bold text-white font-mono tracking-tight">10.0000 PAS</span>
           <span className="text-[10px] text-[#00FF41] font-mono">4 notes</span>
         </div>
 
@@ -156,7 +156,7 @@ export function DashboardActivitySnippet() {
                   </svg>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-white font-mono">{item.amount} ETH</span>
+                  <span className="text-xs font-bold text-white font-mono">{item.amount} PAS</span>
                   <span className="text-[9px] text-[rgba(255,255,255,0.4)] font-mono">{item.label}</span>
                 </div>
               </div>

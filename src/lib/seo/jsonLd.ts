@@ -12,7 +12,7 @@ export function organizationJsonLd() {
     url: SITE_URL,
     logo: `${SITE_URL}/icon.svg`,
     description:
-      "Privacy protocol for Ethereum using stealth addresses (ERC-5564), ZK privacy pools, and private swaps. Non-custodial, open-source.",
+      "Privacy protocol for Polkadot Hub using stealth addresses (ERC-5564), ZK privacy pools, and private swaps. Non-custodial, open-source.",
     foundingDate: "2024",
     sameAs: [
       `https://x.com/${TWITTER_HANDLE.replace("@", "")}`,
@@ -21,7 +21,7 @@ export function organizationJsonLd() {
     knowsAbout: [
       "stealth addresses",
       "zero-knowledge proofs",
-      "Ethereum privacy",
+      "Polkadot Hub privacy",
       "ERC-5564",
       "ERC-6538",
       "ZK-UTXO",
@@ -43,7 +43,7 @@ export function webApplicationJsonLd() {
     operatingSystem: "Web Browser",
     browserRequirements: "Requires JavaScript, WebAssembly support",
     description:
-      "Send and receive crypto privately using stealth addresses and zero-knowledge proofs on Ethereum and EVM-compatible chains.",
+      "Send and receive crypto privately using stealth addresses and zero-knowledge proofs on Polkadot Hub and EVM-compatible chains.",
     offers: {
       "@type": "Offer",
       price: "0",
@@ -52,11 +52,11 @@ export function webApplicationJsonLd() {
     featureList: [
       "Stealth address generation (ERC-5564/ERC-6538)",
       "ZK-UTXO privacy pool with FFLONK proofs",
-      "Private token swaps via Uniswap V4 hooks",
-      "Gasless claims via ERC-4337 paymaster",
+      "Private token swaps via PrivacyAMM",
+      "Gasless claims via signature-relay sponsor wallet",
       "PIN-based stealth key derivation (PBKDF2)",
       "Payment links with .dust usernames",
-      "Multi-chain support (Ethereum Sepolia, Thanos Sepolia)",
+      "Polkadot Hub support",
       "In-browser ZK proof generation (1-2 seconds)",
       "EIP-7702 EOA-as-smart-account support",
     ],
@@ -73,7 +73,7 @@ export function webSiteJsonLd() {
     name: SITE_NAME,
     url: SITE_URL,
     description:
-      "Dust Protocol — private transfers, privacy pools, and anonymous swaps on Ethereum.",
+      "Dust Protocol — private transfers, privacy pools, and anonymous swaps on Polkadot Hub.",
     potentialAction: {
       "@type": "SearchAction",
       target: {
@@ -140,7 +140,7 @@ export function howToJsonLd(
     description,
     totalTime: "PT5M",
     tool: [
-      { "@type": "HowToTool", name: "EVM wallet (MetaMask, WalletConnect, or Privy)" },
+      { "@type": "HowToTool", name: "EVM wallet (MetaMask or WalletConnect)" },
       { "@type": "HowToTool", name: "Web browser with WebAssembly support" },
     ],
     step: steps.map((step, i) => ({
@@ -169,7 +169,7 @@ export function techArticleJsonLd(
     dateModified: "2026-02-22",
     inLanguage: "en",
     isPartOf: { "@type": "WebSite", name: SITE_NAME, url: SITE_URL },
-    about: { "@type": "Thing", name: "Ethereum Privacy", description: "Privacy tools for Ethereum blockchain" },
+    about: { "@type": "Thing", name: "Polkadot Hub Privacy", description: "Privacy tools for Polkadot Hub blockchain" },
     proficiencyLevel: "Expert",
   });
 }
@@ -179,14 +179,14 @@ export function softwareSourceCodeJsonLd() {
     "@context": "https://schema.org",
     "@type": "SoftwareSourceCode",
     name: "Dust Protocol Smart Contracts",
-    description: "Solidity smart contracts for stealth addresses (ERC-5564/ERC-6538), ZK privacy pools, and private swaps via Uniswap V4 hooks.",
+    description: "Solidity smart contracts for stealth addresses (ERC-5564/ERC-6538), ZK privacy pools, and private swaps via PrivacyAMM.",
     codeRepository: "https://github.com/dust-protocol",
     programmingLanguage: [
       { "@type": "ComputerLanguage", name: "Solidity" },
       { "@type": "ComputerLanguage", name: "Circom" },
       { "@type": "ComputerLanguage", name: "TypeScript" },
     ],
-    runtimePlatform: "Ethereum Virtual Machine (EVM)",
+    runtimePlatform: "Polkadot Hub (EVM-compatible)",
     license: "https://opensource.org/licenses/MIT",
     author: { "@type": "Organization", name: SITE_NAME },
   });
@@ -203,7 +203,7 @@ export function definedTermSetJsonLd() {
         "@type": "DefinedTerm",
         name: "Stealth Address",
         description:
-          "A one-time address generated via ECDH key exchange (ERC-5564) that only the intended recipient can detect and spend from, ensuring transaction privacy on Ethereum.",
+          "A one-time address generated via ECDH key exchange (ERC-5564) that only the intended recipient can detect and spend from, ensuring transaction privacy on Polkadot Hub.",
       },
       {
         "@type": "DefinedTerm",
@@ -239,7 +239,7 @@ export function definedTermSetJsonLd() {
         "@type": "DefinedTerm",
         name: "Privacy Swap",
         description:
-          "A token swap executed through a Uniswap V4 hook that validates a ZK proof atomically, preventing on-chain fingerprinting of the swap origin.",
+          "A token swap executed through PrivacyAMM that validates a ZK proof atomically, preventing on-chain fingerprinting of the swap origin.",
       },
       {
         "@type": "DefinedTerm",
@@ -249,9 +249,9 @@ export function definedTermSetJsonLd() {
       },
       {
         "@type": "DefinedTerm",
-        name: "Account Abstraction (ERC-4337)",
+        name: "Signature-Relay StealthWallet",
         description:
-          "An Ethereum standard that enables smart contract wallets with UserOperations, allowing gasless stealth claims via sponsored paymasters without exposing private keys.",
+          "A gasless claim pattern where the stealth address owner signs a drain message, and a sponsor wallet relays the transaction on-chain, enabling gas-free claims without exposing private keys.",
       },
     ],
   });

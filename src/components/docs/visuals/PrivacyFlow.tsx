@@ -188,7 +188,7 @@ export function PrivacyFlow() {
                         textAnchor="middle"
                         fontFamily="JetBrains Mono"
                     >
-                        sends ETH / tokens
+                        sends PAS / tokens
                     </text>
 
                     {/* Node1 → Node2 (vertical) */}
@@ -343,7 +343,7 @@ export function PrivacyFlow() {
                     >
                         <span className="text-[10px] font-bold">ZK PROOF</span>
                         <span className="px-1 py-0.5 border border-dust-border bg-[rgba(255,255,255,0.03)] text-[7px] text-dust-muted tracking-wider">
-                            GROTH16
+                            FFLONK
                         </span>
                     </div>
                 </div>

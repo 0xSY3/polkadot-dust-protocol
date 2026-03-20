@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { formatUnits, parseUnits, zeroAddress } from "viem";
+import { useBalance, useAccount } from "wagmi";
 import { ChevronDownIcon } from "lucide-react";
 import { SUPPORTED_TOKENS, getSupportedTokens, type SwapToken, isSwapSupported, RELAYER_FEE_BPS, getUSDCAddress, ETH_ADDRESS } from "@/lib/swap/constants";
 import { COMPLIANCE_COOLDOWN_THRESHOLD_USD } from "@/lib/dustpool/v2/constants";
@@ -10,6 +11,8 @@ import { UnsupportedChainNotice } from "@/components/ui/UnsupportedChainNotice";
 import { useV2Keys, useV2Balance } from "@/hooks/dustpool/v2";
 import { useV2Swap, type SwapStatus } from "@/hooks/swap/v2/useV2Swap";
 import { useV2DenomSwap, type DenomSwapStatus } from "@/hooks/swap/v2/useV2DenomSwap";
+import { useVanillaSwap, type VanillaSwapStatus } from "@/hooks/swap/v2/useVanillaSwap";
+import { getChainConfig } from "@/config/chains";
 import { useSwapQuote } from "@/hooks/swap";
 import { computeAssetId } from "@/lib/dustpool/v2/commitment";
 import { prefetchProofAssets } from "@/lib/dustpool/v2/proof";
@@ -85,16 +88,19 @@ export function formatExchangeRate(rate: number): string {
 
 export function SwapV2Card({ onPoolChange, oraclePrice }: { onPoolChange?: () => void; oraclePrice?: number | null }) {
   const { isConnected, activeChainId } = useAuth();
+  const { address: walletAddress } = useAccount();
   const swapSupported = isSwapSupported(activeChainId);
 
   const { keysRef, hasKeys, hasPin, isDeriving, error: keyError, deriveKeys } = useV2Keys();
 
   const { balances, pendingDeposits, isLoading: balanceLoading, refreshBalances } = useV2Balance(keysRef, activeChainId);
 
-  const [fromToken, setFromToken] = useState<SwapToken>(SUPPORTED_TOKENS.ETH);
+  const [fromToken, setFromToken] = useState<SwapToken>(SUPPORTED_TOKENS.PAS);
   const [toToken, setToToken] = useState<SwapToken>(() => {
-    try { return getSupportedTokens(activeChainId).USDC; }
-    catch { return SUPPORTED_TOKENS.USDC; }
+    try {
+      const chainTokens = getSupportedTokens(activeChainId);
+      return chainTokens.USDC ?? SUPPORTED_TOKENS.PAS;
+    } catch { return SUPPORTED_TOKENS.PAS; }
   });
   const [amountStr, setAmountStr] = useState("");
 
@@ -129,10 +135,22 @@ export function SwapV2Card({ onPoolChange, oraclePrice }: { onPoolChange?: () =>
     clearError: clearDenomError,
   } = useV2DenomSwap(keysRef, activeChainId);
 
+  // Vanilla swap fallback (when DustSwapAdapterV2 is not deployed)
+  const hasAdapter = !!getChainConfig(activeChainId)?.contracts?.dustSwapAdapterV2;
+  const useVanilla = !hasAdapter;
+  const {
+    swap: vanillaSwapFn,
+    isPending: isVanillaPending,
+    status: vanillaStatus,
+    txHash: vanillaTxHash,
+    error: vanillaError,
+    clearError: clearVanillaError,
+  } = useVanillaSwap(activeChainId);
+
   // Denomination swap toggle (default ON for privacy)
   const [useDenomSwap, setUseDenomSwap] = useState(true);
 
-  // Price quote (reuse V1 quoter — same Uniswap V4 pool)
+  // Price quote (reuse V1 quoter — same PrivacyAMM pool)
   const {
     amountOut: quotedAmountOut,
     isLoading: isQuoteLoading,
@@ -154,7 +172,7 @@ export function SwapV2Card({ onPoolChange, oraclePrice }: { onPoolChange?: () =>
         const ethId = await computeAssetId(activeChainId, zeroAddress);
         if (cancelled) return;
         setEthAssetId(ethId);
-      } catch (err) { console.error('Failed to compute ETH asset ID:', err); }
+      } catch (err) { console.error('Failed to compute PAS asset ID:', err); }
       try {
         const usdcAddr = getUSDCAddress(activeChainId);
         const usdcId = await computeAssetId(activeChainId, usdcAddr);
@@ -166,7 +184,8 @@ export function SwapV2Card({ onPoolChange, oraclePrice }: { onPoolChange?: () =>
     return () => { cancelled = true; };
   }, [activeChainId]);
 
-  const fromBalance = useMemo(() => {
+  // Privacy pool balances (for ZK swap mode)
+  const poolFromBalance = useMemo(() => {
     const assetId = fromToken.address === ETH_ADDRESS ? ethAssetId : usdcAssetId;
     if (!assetId) return 0n;
     return balances.get(assetId) ?? 0n;
@@ -178,6 +197,19 @@ export function SwapV2Card({ onPoolChange, oraclePrice }: { onPoolChange?: () =>
     return balances.get(assetId) ?? 0n;
   }, [balances, toToken.address, ethAssetId, usdcAssetId]);
 
+  // Wallet balance (for vanilla swap mode)
+  const isFromNative = fromToken.address === ETH_ADDRESS;
+  const { data: walletNativeBalance } = useBalance({ address: walletAddress });
+  const { data: walletTokenBalance } = useBalance({
+    address: walletAddress,
+    token: isFromNative ? undefined : fromToken.address as `0x${string}`,
+  });
+  const walletFromBalance = isFromNative
+    ? (walletNativeBalance?.value ?? 0n)
+    : (walletTokenBalance?.value ?? 0n);
+
+  // Use wallet balance for vanilla, pool balance for ZK
+  const fromBalance = useVanilla ? walletFromBalance : poolFromBalance;
   const formattedFromBalance = formatUnits(fromBalance, fromToken.decimals);
   const displayFromBalance = parseFloat(formattedFromBalance).toFixed(fromToken.decimals > 6 ? 4 : 2);
 
@@ -202,8 +234,8 @@ export function SwapV2Card({ onPoolChange, oraclePrice }: { onPoolChange?: () =>
   // Price impact: compare effective rate to oracle spot price
   const priceImpactPct = useMemo(() => {
     if (!oraclePrice || oraclePrice <= 0 || exchangeRate <= 0) return null;
-    // For ETH→USDC: exchangeRate is USDC per ETH, oraclePrice is USDC per ETH
-    // For USDC→ETH: exchangeRate is ETH per USDC, fair rate is 1/oraclePrice
+    // For PAS→USDC: exchangeRate is USDC per PAS, oraclePrice is USDC per PAS
+    // For USDC→PAS: exchangeRate is PAS per USDC, fair rate is 1/oraclePrice
     const isFromNative = fromToken.address === ETH_ADDRESS;
     const fairRate = isFromNative ? oraclePrice : 1 / oraclePrice;
     if (fairRate <= 0) return null;
@@ -248,20 +280,20 @@ export function SwapV2Card({ onPoolChange, oraclePrice }: { onPoolChange?: () =>
 
   const shouldUseDenomSwap = useDenomSwap && denomChunks.length > 1;
 
-  const activeStatus = shouldUseDenomSwap ? denomStatus : status;
-  const activeIsPending = shouldUseDenomSwap ? isDenomPending : isPending;
-  const activeError = shouldUseDenomSwap ? denomError : swapError;
-  const activeTxHash = shouldUseDenomSwap
+  const activeStatus = useVanilla ? vanillaStatus : (shouldUseDenomSwap ? denomStatus : status);
+  const activeIsPending = useVanilla ? isVanillaPending : (shouldUseDenomSwap ? isDenomPending : isPending);
+  const activeError = useVanilla ? vanillaError : (shouldUseDenomSwap ? denomError : swapError);
+  const activeTxHash = useVanilla ? vanillaTxHash : (shouldUseDenomSwap
     ? (denomTxHashes.length > 0 ? denomTxHashes[0] : null)
-    : txHash;
+    : txHash);
 
   // Insufficient balance check — skip when swap is complete (balance just changed)
   const insufficientBalance = hasKeys && activeStatus !== "done" && amountInWei > 0n && amountInWei > fromBalance;
 
-  // canSwap requires keys; canAttemptSwap allows triggering PIN prompt
+  // canSwap requires keys for ZK swap; vanilla swap doesn't need keys
   const canSwap =
     isConnected &&
-    hasKeys &&
+    (useVanilla || hasKeys) &&
     amountValid &&
     !insufficientBalance &&
     quotedAmountOut > 0n &&
@@ -287,7 +319,14 @@ export function SwapV2Card({ onPoolChange, oraclePrice }: { onPoolChange?: () =>
 
   const handleSwap = useCallback(async () => {
     if (!canSwap) return;
-    if (shouldUseDenomSwap) {
+    if (useVanilla) {
+      await vanillaSwapFn(
+        amountInWei,
+        fromToken.address,
+        toToken.address,
+        minAmountOut,
+      );
+    } else if (shouldUseDenomSwap) {
       await denomSwap(
         amountInWei,
         fromToken.address,
@@ -305,14 +344,15 @@ export function SwapV2Card({ onPoolChange, oraclePrice }: { onPoolChange?: () =>
         RELAYER_FEE_BPS
       );
     }
-  }, [canSwap, shouldUseDenomSwap, denomSwap, swap, amountInWei, fromToken.address, toToken.address, minAmountOut, slippageBps]);
+  }, [canSwap, useVanilla, vanillaSwapFn, shouldUseDenomSwap, denomSwap, swap, amountInWei, fromToken.address, toToken.address, minAmountOut, slippageBps]);
 
   const handleReset = useCallback(() => {
     clearError();
     clearDenomError();
+    clearVanillaError();
     setAmountStr("");
     refreshBalances();
-  }, [clearError, clearDenomError, refreshBalances]);
+  }, [clearError, clearDenomError, clearVanillaError, refreshBalances]);
 
   const handlePinSubmit = async () => {
     try {
@@ -329,13 +369,13 @@ export function SwapV2Card({ onPoolChange, oraclePrice }: { onPoolChange?: () =>
 
   // When user clicks swap without keys, show PIN prompt
   const handleSwapOrUnlock = useCallback(() => {
-    if (!hasKeys) {
+    if (!useVanilla && !hasKeys) {
       setShowPinInput(true);
       setPendingSwapAfterPin(true);
       return;
     }
     handleSwap();
-  }, [hasKeys, handleSwap]);
+  }, [useVanilla, hasKeys, handleSwap]);
 
   const handleSlippageChange = (bps: number) => {
     setSlippageBps(bps);

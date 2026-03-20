@@ -91,8 +91,7 @@ export default function SettingsPage() {
             from a CREATE2 salt, allowing the recipient to predict the address before deployment.
           </li>
           <li>
-            <strong className="text-white">ERC-4337</strong> — Account Abstraction with DustPaymaster.
-            The paymaster sponsors gas, so you can claim without holding PAS on the stealth address.
+            <strong className="text-[rgba(255,255,255,0.35)]">ERC-4337</strong> — <span className="italic text-[rgba(255,255,255,0.4)]">Not available on Polkadot Hub.</span>
           </li>
         </ul>
       </section>
@@ -126,7 +125,7 @@ export default function SettingsPage() {
         <DocsBadge variant="amber">AES-256-GCM</DocsBadge>
         <DocsBadge variant="green">View Keys</DocsBadge>
         <DocsBadge variant="blue">CREATE2</DocsBadge>
-        <DocsBadge variant="blue">ERC-4337</DocsBadge>
+        <DocsBadge variant="muted">ERC-4337</DocsBadge>
       </div>
     </DocsPage>
     </>

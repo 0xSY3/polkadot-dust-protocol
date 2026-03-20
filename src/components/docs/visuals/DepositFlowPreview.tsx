@@ -10,10 +10,10 @@ export function DepositAmountSnippet() {
       <div className={snippetInner}>
         <div className="flex justify-between items-center mb-1.5">
           <span className="text-[10px] uppercase tracking-wider text-[rgba(255,255,255,0.45)]">
-            Amount (ETH)
+            Amount (PAS)
           </span>
           <span className="text-[10px] text-[#00FF41]">
-            BAL: 4.2500 ETH
+            BAL: 4.2500 PAS
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -70,7 +70,7 @@ export function DepositSuccessSnippet() {
             <path d="M20 6L9 17l-5-5" />
           </svg>
           <span className="text-xs text-white font-semibold">Deposit Successful</span>
-          <span className="text-[10px] text-[rgba(255,255,255,0.4)]">1.5 ETH</span>
+          <span className="text-[10px] text-[rgba(255,255,255,0.4)]">1.5 PAS</span>
         </div>
         <span className="text-[11px] text-[#00FF41]">{MOCK_TX}</span>
       </div>

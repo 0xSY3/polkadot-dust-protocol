@@ -137,15 +137,15 @@ export default function HowItWorksPage() {
             title: "Deposit any amount to DustPoolV2",
             children: <>Deposit PAS or ERC-20 tokens in <strong>any amount</strong> — no fixed denominations required.
               Your browser computes a Poseidon commitment <code>C = Poseidon(ownerPubKey, amount, asset, chainId, blinding)</code>
-              and a nullifier <code>N = Poseidon(nullifierKey, leafIndex)</code>. The commitment is inserted into a
+              and a nullifier <code>N = Poseidon(nullifierKey, commitment, leafIndex)</code>. The commitment is inserted into a
               relayer-maintained off-chain Merkle tree (depth 20).</>,
           },
           {
             title: "Generate a FFLONK ZK proof (in-browser)",
             children: <>When withdrawing, the browser generates a <strong>FFLONK</strong> proof (no trusted setup required)
-              using the 2-in-2-out transaction circuit (~12,400 constraints). Public inputs include:
+              using the 2-in-2-out transaction circuit (~26,900 constraints). Public inputs include:
               <code> merkleRoot, nullifier0, nullifier1, outCommitment0, outCommitment1, pubAmount, pubAsset, recipient, chainId</code>.
-              For denomination privacy, use the <strong>2-in-8-out split circuit</strong> (~32,000 constraints) to break
+              For denomination privacy, use the <strong>2-in-8-out split circuit</strong> (~32,074 constraints) to break
               withdrawals into common denomination chunks automatically.</>,
           },
           {

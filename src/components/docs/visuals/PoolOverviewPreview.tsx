@@ -76,13 +76,13 @@ export function PoolOracleSnippet() {
             <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
           </svg>
           <span className="text-[10px] text-[rgba(255,255,255,0.45)] uppercase tracking-wider">Oracle</span>
-          <span className="text-[8px] px-1 py-px rounded-sm leading-tight text-[#00FF41] bg-[rgba(0,255,65,0.08)]">CHAINLINK</span>
+          <span className="text-[8px] px-1 py-px rounded-sm leading-tight text-[#00FF41] bg-[rgba(0,255,65,0.08)]">AMM ORACLE</span>
         </div>
         <div className="flex items-center gap-1 text-xs font-bold text-white">
           <span className="text-[rgba(255,255,255,0.5)]">1</span>
           <EthIcon size={12} />
           <span className="text-[rgba(255,255,255,0.35)]">=</span>
-          <span>2,506.00</span>
+          <span>1,847.00</span>
           <UsdcIcon size={12} />
         </div>
         <span className="text-[9px] text-[rgba(255,255,255,0.25)] mt-0.5 block">tick -198234</span>
@@ -155,14 +155,13 @@ export function PoolNetworksSnippet() {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-[#00FF41]" />
-            <span className="text-[10px] text-[rgba(255,255,255,0.6)]">Eth Sepolia</span>
+            <span className="text-[10px] text-[rgba(255,255,255,0.6)]">Polkadot Hub</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-[rgba(255,255,255,0.2)]" />
-            <span className="text-[10px] text-[rgba(255,255,255,0.3)]">Thanos Sepolia</span>
+            <span className="text-[10px] text-[rgba(255,255,255,0.3)]">More L2s coming</span>
           </div>
         </div>
-        <span className="text-[9px] text-[rgba(255,255,255,0.2)] italic mt-1.5 block">More L2s coming</span>
       </div>
     </div>
   );

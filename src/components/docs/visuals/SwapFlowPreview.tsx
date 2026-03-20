@@ -25,7 +25,7 @@ const SHIELD_ICON = (
   </svg>
 );
 
-/** FROM (ETH 2.0) → arrow → TO (USDC 5,012.00) compact token pair */
+/** FROM (PAS 2.0) → arrow → TO (USDC 5,012.00) compact token pair */
 export function SwapTokenPairSnippet() {
   return (
     <div className={SNIPPET_WRAP}>
@@ -36,7 +36,7 @@ export function SwapTokenPairSnippet() {
             <span className="text-[9px] text-[rgba(255,255,255,0.35)] uppercase tracking-widest">FROM</span>
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.08)]">
               {ETH_ICON}
-              <span className="text-xs font-bold text-white">ETH</span>
+              <span className="text-xs font-bold text-white">PAS</span>
             </div>
             <span className="text-sm font-bold text-white">2.0</span>
           </div>
@@ -86,7 +86,7 @@ export function SwapDenomSnippet() {
               key={chunk}
               className="px-2 py-0.5 rounded-sm bg-[rgba(0,255,65,0.06)] border border-[rgba(0,255,65,0.12)] text-[10px] text-[#00FF41]"
             >
-              {chunk} ETH
+              {chunk} PAS
             </span>
           ))}
           <span className="text-[10px] text-[rgba(255,255,255,0.3)] self-center ml-1">
@@ -101,7 +101,7 @@ export function SwapDenomSnippet() {
 /** Compact 4-row price info table */
 export function SwapPriceInfoSnippet() {
   const rows = [
-    { label: "RATE", value: "1 ETH \u2248 2,506.00 USDC" },
+    { label: "RATE", value: "1 PAS \u2248 1,847.00 USDC" },
     { label: "SLIPPAGE", value: "0.5%" },
     { label: "MIN_RECEIVED", value: "4,901.76 USDC" },
     { label: "RELAYER_FEE", value: "2%" },
@@ -123,11 +123,11 @@ export function SwapPriceInfoSnippet() {
   );
 }
 
-/** Atomic flow diagram: DustPoolV2 → withdraw → Uniswap V4 swap → deposit → new UTXO */
+/** Atomic flow diagram: DustPoolV2 → withdraw → PrivacyAMM swap → deposit → new UTXO */
 export function SwapFlowDiagramSnippet() {
   const steps = [
     { label: "DustPoolV2", sub: "withdraw" },
-    { label: "Uniswap V4", sub: "swap" },
+    { label: "PrivacyAMM", sub: "swap" },
     { label: "DustPoolV2", sub: "deposit" },
     { label: "New UTXO", sub: "note" },
   ];
